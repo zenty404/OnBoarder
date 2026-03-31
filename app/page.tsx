@@ -1,31 +1,14 @@
 // ============================================================
 // PAGE PRINCIPALE : TABLEAU DE BORD (DASHBOARD)
 // ============================================================
-// Ce fichier est la page d'accueil du mini-CRM "OnBoarder".
-//
-// IMPORTANT : Pour le moment, toutes les données affichées sont
-// des données fictives (mock data) définies en dur ci-dessous.
-// Aucune connexion à Supabase n'est effectuée.
-// Le but est d'avoir un rendu visuel fidèle à la maquette.
-//
-// Structure de la page :
-//   1. Sidebar (menu latéral gauche) avec la navigation
-//   2. Zone principale avec :
-//      a. Un header (barre du haut) avec le titre et l'utilisateur
-//      b. Les cartes de statistiques (contacts, opportunités, CA)
-//      c. Un bandeau de bienvenue personnalisé
-// ============================================================
+
 
 import Image from "next/image";
 
 
 // ============================================================
 // SECTION 1 : DONNÉES FICTIVES (MOCK DATA)
-// ============================================================
-// Ces données simulent ce qu'on récupérerait normalement depuis
-// la base de données Supabase. Elles sont placées ici en haut
-// du fichier pour être facilement modifiables lors de la soutenance.
-// ============================================================
+// ===========================================================
 
 /** Informations de l'utilisateur connecté (simulé) */
 const utilisateur = {
@@ -40,19 +23,12 @@ const statistiques = {
   chiffreAffairesPotentiel: 45000,
 };
 
-/**
- * Éléments du menu de navigation dans la sidebar.
- * Chaque élément possède :
- *   - nom : le texte affiché dans le menu
- *   - href : le lien vers la page correspondante
- *   - actif : true si c'est la page actuellement visitée
- *   - icone : le chemin vers le fichier icône dans /public/icones/
- */
+/** Éléments du menu de navigation dans la sidebar. */
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",              actif: true,  icone: "/icones/tableau-de-bord.svg" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/icones/entreprises.svg" },
-  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/icones/contacts.svg" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/icones/opportunites.svg" },
+  { nom: "Tableau de bord", href: "/", actif: true, icone: "/icones/tableau-de-bord.svg" },
+  { nom: "Entreprises", href: "/entreprises", actif: false, icone: "/icones/entreprises.svg" },
+  { nom: "Contacts", href: "/contacts", actif: false, icone: "/icones/contacts.svg" },
+  { nom: "Opportunités", href: "/opportunites", actif: false, icone: "/icones/opportunites.svg" },
 ];
 
 
@@ -61,9 +37,8 @@ const elementsNavigation = [
 // ============================================================
 
 /**
- * Formate un nombre en format monétaire français.
- * Exemple : 45000 → "45 000 €"
- * On utilise l'API native Intl.NumberFormat pour un formatage propre.
+ Formate un nombre en format monétaire français.
+ On utilise l'API native Intl.NumberFormat pour un formatage propre.
  */
 function formaterMontant(montant: number): string {
   return new Intl.NumberFormat("fr-FR", {
@@ -77,27 +52,6 @@ function formaterMontant(montant: number): string {
 
 // ============================================================
 // SECTION 3 : COMPOSANT PRINCIPAL DE LA PAGE
-// ============================================================
-// C'est le composant exporté par défaut. Next.js l'affiche
-// automatiquement quand l'utilisateur visite la route "/".
-//
-// ICÔNES : Toutes les icônes sont des fichiers SVG/PNG à placer
-// manuellement dans le dossier /public/icones/. Les chemins
-// attendus sont listés ci-dessous :
-//
-//   Sidebar :
-//     - /public/icones/tableau-de-bord.svg
-//     - /public/icones/entreprises.svg
-//     - /public/icones/contacts.svg
-//     - /public/icones/opportunites.svg
-//
-//   Cartes statistiques :
-//     - /public/icones/personne-plus.svg
-//     - /public/icones/tendance.svg
-//     - /public/icones/chiffre-affaires.svg
-//
-//   Header :
-//     - /public/icones/utilisateur.svg
 // ============================================================
 
 export default function PageTableauDeBord() {
@@ -128,10 +82,9 @@ export default function PageTableauDeBord() {
                     className={`
                       flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
                       transition-colors duration-150
-                      ${
-                        element.actif
-                          ? "bg-indigo-50 text-indigo-600" /* Style actif : fond bleu clair + texte bleu */
-                          : "text-gray-700 hover:bg-gray-100" /* Style inactif : texte gris + survol gris */
+                      ${element.actif
+                        ? "bg-indigo-50 text-indigo-600" /* Style actif : fond bleu clair + texte bleu */
+                        : "text-gray-700 hover:bg-gray-100" /* Style inactif : texte gris + survol gris */
                       }
                     `}
                   >
@@ -231,8 +184,6 @@ export default function PageTableauDeBord() {
           {/* ================================================== */}
           {/* BANDEAU DE BIENVENUE                                 */}
           {/* ================================================== */}
-          {/* Carte large sous les statistiques avec un message    */}
-          {/* personnalisé et un dégradé décoratif à droite.       */}
           <div className="relative mt-8 overflow-hidden rounded-2xl bg-gray-100 p-8">
             {/* Texte de bienvenue (partie gauche) */}
             <div className="relative z-10 max-w-xl">
@@ -246,8 +197,7 @@ export default function PageTableauDeBord() {
               </p>
             </div>
 
-            {/* Décoration : dégradé violet en arrière-plan à droite */}
-            {/* C'est un élément purement visuel, sans contenu fonctionnel. */}
+            {/* dégradé violet en arrière-plan à droite */}
             <div className="absolute right-0 top-0 h-full w-1/3 rounded-l-3xl bg-gradient-to-l from-indigo-200/80 via-indigo-100/50 to-transparent" />
           </div>
 
