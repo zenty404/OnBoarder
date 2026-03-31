@@ -16,6 +16,8 @@
 //      c. Un bandeau de bienvenue personnalisé
 // ============================================================
 
+import Image from "next/image";
+
 
 // ============================================================
 // SECTION 1 : DONNÉES FICTIVES (MOCK DATA)
@@ -38,122 +40,24 @@ const statistiques = {
   chiffreAffairesPotentiel: 45000,
 };
 
-/** Éléments du menu de navigation dans la sidebar */
+/**
+ * Éléments du menu de navigation dans la sidebar.
+ * Chaque élément possède :
+ *   - nom : le texte affiché dans le menu
+ *   - href : le lien vers la page correspondante
+ *   - actif : true si c'est la page actuellement visitée
+ *   - icone : le chemin vers le fichier icône dans /public/icones/
+ */
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/", actif: true },
-  { nom: "Entreprises", href: "/entreprises", actif: false },
-  { nom: "Contacts", href: "/contacts", actif: false },
-  { nom: "Opportunités", href: "/opportunites", actif: false },
+  { nom: "Tableau de bord", href: "/",              actif: true,  icone: "/icones/tableau-de-bord.svg" },
+  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/icones/entreprises.svg" },
+  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/icones/contacts.svg" },
+  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/icones/opportunites.svg" },
 ];
 
 
 // ============================================================
-// SECTION 2 : COMPOSANTS D'ICÔNES SVG
-// ============================================================
-// Chaque icône est un petit composant React qui retourne un SVG.
-// On les sépare ici pour garder le JSX principal propre et lisible.
-// Les icônes sont inspirées du style de la maquette (trait fin, style ligne).
-// ============================================================
-
-/** Icône "grille" pour le menu Tableau de bord */
-function IconeTableauDeBord() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  );
-}
-
-/** Icône "immeuble" pour le menu Entreprises */
-function IconeEntreprises() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="2" width="16" height="20" rx="2" />
-      <path d="M9 22v-4h6v4" />
-      <path d="M8 6h.01" />
-      <path d="M16 6h.01" />
-      <path d="M8 10h.01" />
-      <path d="M16 10h.01" />
-      <path d="M8 14h.01" />
-      <path d="M16 14h.01" />
-    </svg>
-  );
-}
-
-/** Icône "personnes" pour le menu Contacts */
-function IconeContacts() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
-
-/** Icône "diamant" pour le menu Opportunités */
-function IconeOpportunites() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 3h12l4 6-10 13L2 9z" />
-      <path d="M11 3l1 6h8" />
-      <path d="M2 9h20" />
-      <path d="M13 3l-1 6H4" />
-    </svg>
-  );
-}
-
-/** Icône "personne +" pour la carte Total des Contacts */
-function IconePersonnePlus() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="19" y1="8" x2="19" y2="14" />
-      <line x1="22" y1="11" x2="16" y2="11" />
-    </svg>
-  );
-}
-
-/** Icône "courbe montante" pour la carte Opportunités en cours */
-function IconeTendance() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}
-
-/** Icône "billet / portefeuille" pour la carte Chiffre d'affaires */
-function IconeChiffreAffaires() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <circle cx="12" cy="12" r="2" />
-      <path d="M6 12h.01" />
-      <path d="M18 12h.01" />
-    </svg>
-  );
-}
-
-/** Icône "utilisateur" pour le header (à côté du nom) */
-function IconeUtilisateur() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-
-
-// ============================================================
-// SECTION 3 : FONCTION UTILITAIRE
+// SECTION 2 : FONCTION UTILITAIRE
 // ============================================================
 
 /**
@@ -170,31 +74,30 @@ function formaterMontant(montant: number): string {
   }).format(montant);
 }
 
-/**
- * Retourne l'icône SVG correspondant au nom de l'élément de navigation.
- * Cela permet de garder le JSX de la sidebar propre et lisible.
- */
-function getIconeNavigation(nomElement: string) {
-  switch (nomElement) {
-    case "Tableau de bord":
-      return <IconeTableauDeBord />;
-    case "Entreprises":
-      return <IconeEntreprises />;
-    case "Contacts":
-      return <IconeContacts />;
-    case "Opportunités":
-      return <IconeOpportunites />;
-    default:
-      return null;
-  }
-}
-
 
 // ============================================================
-// SECTION 4 : COMPOSANT PRINCIPAL DE LA PAGE
+// SECTION 3 : COMPOSANT PRINCIPAL DE LA PAGE
 // ============================================================
 // C'est le composant exporté par défaut. Next.js l'affiche
 // automatiquement quand l'utilisateur visite la route "/".
+//
+// ICÔNES : Toutes les icônes sont des fichiers SVG/PNG à placer
+// manuellement dans le dossier /public/icones/. Les chemins
+// attendus sont listés ci-dessous :
+//
+//   Sidebar :
+//     - /public/icones/tableau-de-bord.svg
+//     - /public/icones/entreprises.svg
+//     - /public/icones/contacts.svg
+//     - /public/icones/opportunites.svg
+//
+//   Cartes statistiques :
+//     - /public/icones/personne-plus.svg
+//     - /public/icones/tendance.svg
+//     - /public/icones/chiffre-affaires.svg
+//
+//   Header :
+//     - /public/icones/utilisateur.svg
 // ============================================================
 
 export default function PageTableauDeBord() {
@@ -232,8 +135,8 @@ export default function PageTableauDeBord() {
                       }
                     `}
                   >
-                    {/* Icône du lien (récupérée via la fonction utilitaire) */}
-                    {getIconeNavigation(element.nom)}
+                    {/* Icône du lien — fichier à placer dans /public/icones/ */}
+                    <Image src={element.icone} alt={element.nom} width={20} height={20} />
                     {/* Texte du lien */}
                     {element.nom}
                   </a>
@@ -262,9 +165,7 @@ export default function PageTableauDeBord() {
               {utilisateur.nomComplet}
             </span>
             {/* Icône utilisateur (avatar placeholder) */}
-            <span className="text-gray-500">
-              <IconeUtilisateur />
-            </span>
+            <Image src="/icones/utilisateur.svg" alt="Utilisateur" width={20} height={20} />
             {/* Lien de déconnexion (non fonctionnel pour le moment) */}
             <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
               Déconnexion
@@ -286,8 +187,8 @@ export default function PageTableauDeBord() {
             {/* --- Carte 1 : Total des contacts --- */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               {/* Icône dans un cercle coloré */}
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                <IconePersonnePlus />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
+                <Image src="/icones/personne-plus.svg" alt="Contacts" width={22} height={22} />
               </div>
               {/* Label de la statistique */}
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -301,8 +202,8 @@ export default function PageTableauDeBord() {
 
             {/* --- Carte 2 : Opportunités en cours --- */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                <IconeTendance />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
+                <Image src="/icones/tendance.svg" alt="Tendance" width={22} height={22} />
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Opportunités en cours
@@ -314,8 +215,8 @@ export default function PageTableauDeBord() {
 
             {/* --- Carte 3 : Chiffre d'affaires potentiel --- */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-                <IconeChiffreAffaires />
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
+                <Image src="/icones/chiffre-affaires.svg" alt="Chiffre d'affaires" width={22} height={22} />
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Chiffre d&apos;affaires potentiel
