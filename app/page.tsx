@@ -25,10 +25,10 @@ const statistiques = {
 
 /** Éléments du menu de navigation dans la sidebar. */
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/", actif: true, icone: "/icones/tableau-de-bord.svg" },
-  { nom: "Entreprises", href: "/entreprises", actif: false, icone: "/icones/entreprises.svg" },
-  { nom: "Contacts", href: "/contacts", actif: false, icone: "/icones/contacts.svg" },
-  { nom: "Opportunités", href: "/opportunites", actif: false, icone: "/icones/opportunites.svg" },
+  { nom: "Tableau de bord", href: "/", actif: true, icone: "/dashbord.png" },
+  { nom: "Entreprises", href: "/entreprises", actif: false, icone: "/entreprises.png" },
+  { nom: "Contacts", href: "/contacts", actif: false, icone: "/contacts.png" },
+  { nom: "Opportunités", href: "/opportunites", actif: false, icone: "/opportunites.png" },
 ];
 
 
@@ -118,7 +118,7 @@ export default function PageTableauDeBord() {
               {utilisateur.nomComplet}
             </span>
             {/* Icône utilisateur (avatar placeholder) */}
-            <Image src="/icones/utilisateur.svg" alt="Utilisateur" width={20} height={20} />
+            <Image src="/user.png" alt="Utilisateur" width={20} height={20} />
             {/* Lien de déconnexion (non fonctionnel pour le moment) */}
             <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
               Déconnexion
@@ -141,7 +141,7 @@ export default function PageTableauDeBord() {
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               {/* Icône dans un cercle coloré */}
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
-                <Image src="/icones/personne-plus.svg" alt="Contacts" width={22} height={22} />
+                <Image src="/contacts.png" alt="Contacts" width={22} height={22} />
               </div>
               {/* Label de la statistique */}
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -156,7 +156,7 @@ export default function PageTableauDeBord() {
             {/* --- Carte 2 : Opportunités en cours --- */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
-                <Image src="/icones/tendance.svg" alt="Tendance" width={22} height={22} />
+                <Image src="/opportunites.png" alt="Opportunités" width={22} height={22} />
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Opportunités en cours
@@ -169,7 +169,7 @@ export default function PageTableauDeBord() {
             {/* --- Carte 3 : Chiffre d'affaires potentiel --- */}
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
-                <Image src="/icones/chiffre-affaires.svg" alt="Chiffre d'affaires" width={22} height={22} />
+                <Image src="/dollar.png" alt="Chiffre d'affaires" width={22} height={22} />
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Chiffre d&apos;affaires potentiel
