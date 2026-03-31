@@ -98,10 +98,10 @@ const utilisateur = {
 
 /** Éléments du menu de navigation dans la sidebar. */
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",             actif: false, icone: "/icones/tableau-de-bord.svg" },
-  { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/icones/entreprises.svg" },
-  { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/icones/contacts.svg" },
-  { nom: "Opportunités",    href: "/opportunites", actif: true,  icone: "/icones/opportunites.svg" },
+  { nom: "Tableau de bord", href: "/",             actif: false, icone: "/dashbord.png" },
+  { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/entreprises.png" },
+  { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/contacts.png" },
+  { nom: "Opportunités",    href: "/opportunites", actif: true,  icone: "/opportunites.png" },
 ];
 
 // ============================================================
@@ -235,7 +235,7 @@ export default function PageOpportunites() {
             <span className="text-sm font-medium text-gray-700">
               {utilisateur.nomComplet}
             </span>
-            <Image src="/icones/utilisateur.svg" alt="Utilisateur" width={20} height={20} />
+            <Image src="/user.png" alt="Utilisateur" width={20} height={20} />
             <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
               Déconnexion
             </button>
