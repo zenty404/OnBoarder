@@ -144,10 +144,20 @@ export default function PageContacts() {
                   <p className="text-sm text-gray-500">
                     Mail : <span className="text-gray-700">{contact.mail}</span>
                   </p>
+                   
                 </div>
 
-                
-              </div>
+                {/* --- Ligne du bas : bouton "Contacter" + icône email --- */}
+                <div className="mt-5 flex items-center justify-between">
+                  {/* Bouton contacter (visuel uniquement) */}
+                  <button className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+                    Voir l'entreprise
+                  </button>
+
+                  {/* Icône delete */}
+                  <Image src="/delete.png" alt="supr entreprise" width={24} height={24} />
+                </div>
+            </div>
             ))}
 
           </div>

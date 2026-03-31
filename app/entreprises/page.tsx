@@ -153,8 +153,8 @@ export default function PageEntreprises() {
                     Contacter
                   </button>
 
-                  {/* Icône email — fichier à placer dans /public/icones/ */}
-                  <Image src="/icones/email.svg" alt="Envoyer un email" width={24} height={24} />
+                  {/* Icône delete */}
+                  <Image src="/delete.png" alt="supr entreprise" width={24} height={24} />
                 </div>
               </div>
             ))}
