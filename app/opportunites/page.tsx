@@ -1,13 +1,29 @@
 // ============================================================
-// DIRECTIVE CLIENT : obligatoire car on utilise useState et
-// des gestionnaires d'événements (drag & drop).
-// Sans ce mot-clé, Next.js traite le fichier comme un
-// Server Component et refuse useState.
+// PAGE : OPPORTUNITÉS (Tableau Kanban avec Drag & Drop)
 // ============================================================
+// Cette page est désormais DYNAMIQUE : elle récupère les vraies
+// données depuis la table "deals" de Supabase et synchronise
+// chaque déplacement de carte avec la base de données.
+//
+// C'est un Client Component ("use client") car on utilise :
+//   - useState  : pour stocker les colonnes, le formulaire, etc.
+//   - useEffect : pour vérifier la session et charger les données
+//   - useRouter : pour rediriger vers /login si pas de session
+//   - @hello-pangea/dnd : pour le Drag & Drop interactif
+//
+// FLUX DE DONNÉES :
+//   1. Au montage → on fetch les deals + les contacts depuis Supabase
+//   2. Les deals sont triés par statut dans 4 colonnes (Record)
+//   3. Au drag & drop → mise à jour locale (UI) + UPDATE Supabase
+//   4. À l'ajout → INSERT Supabase + ajout dans la colonne "À contacter"
+// ============================================================
+
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 // ============================================================
 // IMPORT @hello-pangea/dnd — les 3 briques du Drag & Drop
@@ -34,44 +50,52 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 
+
 // ============================================================
-// SECTION 1 : TYPES & DONNÉES FICTIVES (MOCK DATA)
+// SECTION 1 : TYPES TYPESCRIPT
 // ============================================================
 
-/** Représente une opportunité commerciale (deal). */
+/**
+ * Représente une opportunité commerciale (deal) telle qu'elle
+ * est stockée dans Supabase + enrichie par la jointure contacts.
+ *
+ * Mapping avec la table "deals" :
+ *   - id       → UUID auto-généré par Supabase
+ *   - title    → Titre de l'opportunité
+ *   - amount   → Montant estimé en euros
+ *   - status   → Statut actuel (= nom de la colonne Kanban)
+ *   - contacts → Objet joint contenant le nom du contact lié
+ */
 type Deal = {
-  id: string;         // Identifiant unique de la carte
-  titre: string;      // Titre de l'opportunité
-  montant: number;    // Montant estimé en euros
-  contact: string;    // Nom du contact associé
+  id: string;
+  title: string;
+  amount: number;
+  status: string;
+  contact_id: string;
+  contacts: { full_name: string } | null;
 };
 
 /**
- * État initial du tableau Kanban.
- * C'est un objet (Record) dont :
- *   - les CLÉS sont exactement les 4 statuts métier
- *   - les VALEURS sont des tableaux de deals
- *
- * Chaque tableau représente le contenu d'une colonne.
+ * Type simplifié pour les contacts, utilisé uniquement
+ * dans le menu déroulant du formulaire d'ajout.
  */
-const donneesInitiales: Record<string, Deal[]> = {
-  "À contacter": [
-    { id: "deal-1", titre: "Site vitrine TechVision",    montant: 2400,  contact: "Marie Laurent" },
-    { id: "deal-2", titre: "Refonte logo DataSoft",      montant: 800,   contact: "Pierre Martin" },
-    { id: "deal-3", titre: "Audit SEO GreenLeaf",        montant: 1200,  contact: "Sophie Durand" },
-  ],
-  "En négociation": [
-    { id: "deal-4", titre: "Application mobile CloudNine", montant: 8500, contact: "Lucas Bernard" },
-    { id: "deal-5", titre: "Dashboard analytics Neopix",  montant: 3600, contact: "Clara Petit" },
-  ],
-  "Conclu": [
-    { id: "deal-6", titre: "E-commerce Maison Fleury",   montant: 5200,  contact: "Antoine Moreau" },
-    { id: "deal-7", titre: "Intégration API Banque LCO", montant: 4100,  contact: "Lucie Simon" },
-  ],
-  "Perdu": [
-    { id: "deal-8", titre: "Chatbot support Axo Group",  montant: 2900,  contact: "Nicolas Roy" },
-  ],
+type Contact = {
+  id: string;
+  full_name: string;
 };
+
+
+// ============================================================
+// SECTION 2 : CONSTANTES (navigation, couleurs, ordre)
+// ============================================================
+
+/** Éléments du menu de navigation dans la sidebar. */
+const elementsNavigation = [
+  { nom: "Tableau de bord", href: "/",             actif: false, icone: "/dashbord.png" },
+  { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/entreprises.png" },
+  { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/contacts.png" },
+  { nom: "Opportunités",    href: "/opportunites", actif: true,  icone: "/opportunites.png" },
+];
 
 /** Ordre d'affichage des colonnes (de gauche à droite). */
 const ORDRE_COLONNES = ["À contacter", "En négociation", "Conclu", "Perdu"];
@@ -87,22 +111,6 @@ const COULEUR_STATUT: Record<string, string> = {
   "Perdu":          "bg-red-400",
 };
 
-// ============================================================
-// SECTION 2 : DONNÉES DE NAVIGATION & UTILISATEUR
-// ============================================================
-
-/** Informations de l'utilisateur connecté (simulé). */
-const utilisateur = {
-  nomComplet: "Jean Dupont",
-};
-
-/** Éléments du menu de navigation dans la sidebar. */
-const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",             actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites", actif: true,  icone: "/opportunites.png" },
-];
 
 // ============================================================
 // SECTION 3 : COMPOSANT PRINCIPAL DE LA PAGE
@@ -111,13 +119,152 @@ const elementsNavigation = [
 export default function PageOpportunites() {
 
   // ----------------------------------------------------------
-  // ÉTAT LOCAL : colonnes du Kanban
+  // ÉTATS LOCAUX (useState)
   // ----------------------------------------------------------
-  // On stocke les colonnes dans un useState pour que React
-  // re-rende le composant après chaque déplacement de carte.
-  // "colonnes" est une copie mutable de donneesInitiales.
+
+  /** Email de l'utilisateur connecté (récupéré depuis la session Supabase) */
+  const [emailUtilisateur, setEmailUtilisateur] = useState("");
+
+  /**
+   * État du tableau Kanban : un objet (Record) dont :
+   *   - les CLÉS sont les 4 statuts métier ("À contacter", etc.)
+   *   - les VALEURS sont des tableaux de deals
+   * Chaque tableau représente le contenu d'une colonne.
+   * Initialisé avec des tableaux vides (remplis au fetch).
+   */
+  const [colonnes, setColonnes] = useState<Record<string, Deal[]>>({
+    "À contacter":    [],
+    "En négociation": [],
+    "Conclu":         [],
+    "Perdu":          [],
+  });
+
+  /** Liste des contacts de l'utilisateur (pour le menu déroulant du formulaire) */
+  const [listeContacts, setListeContacts] = useState<Contact[]>([]);
+
+  /** Indicateur de chargement : true tant que les données n'ont pas été récupérées */
+  const [chargement, setChargement] = useState(true);
+
+  /** Contrôle l'affichage du formulaire d'ajout (visible ou masqué) */
+  const [formulaireOuvert, setFormulaireOuvert] = useState(false);
+
+  /** Valeur du champ "Titre" dans le formulaire d'ajout */
+  const [nouveauTitre, setNouveauTitre] = useState("");
+
+  /** Valeur du champ "Montant" dans le formulaire d'ajout */
+  const [nouveauMontant, setNouveauMontant] = useState("");
+
+  /** ID du contact sélectionné dans le menu déroulant */
+  const [contactSelectionne, setContactSelectionne] = useState("");
+
   // ----------------------------------------------------------
-  const [colonnes, setColonnes] = useState<Record<string, Deal[]>>(donneesInitiales);
+  // HOOK DE NAVIGATION
+  // ----------------------------------------------------------
+  const router = useRouter();
+
+
+  // ----------------------------------------------------------
+  // useEffect : VÉRIFICATION DE SESSION + CHARGEMENT DES DONNÉES
+  // ----------------------------------------------------------
+  // Ce useEffect se lance UNE SEULE FOIS au montage du composant ([] vide).
+  // Étapes :
+  //   1. On vérifie si l'utilisateur a une session active
+  //   2. Si NON → redirection vers /login
+  //   3. Si OUI → on récupère les deals ET les contacts en parallèle
+  //   4. On organise les deals par statut dans l'objet "colonnes"
+
+  useEffect(() => {
+    async function verifierSessionEtChargerDonnees() {
+
+      // ======================================================
+      // ÉTAPE 1 : Vérifier la session utilisateur
+      // ======================================================
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Si pas de session → redirection vers /login
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      // On récupère l'email pour l'afficher dans le header
+      setEmailUtilisateur(session.user.email ?? "");
+
+      // ======================================================
+      // ÉTAPE 2 : Récupérer deals + contacts EN PARALLÈLE
+      // ======================================================
+      // On utilise Promise.all pour exécuter les 2 requêtes EN MÊME TEMPS.
+
+      const [resultatDeals, resultatContacts] = await Promise.all([
+
+        // --------------------------------------------------
+        // REQUÊTE 1 : Récupérer tous les deals avec jointure
+        // --------------------------------------------------
+        // .select("*, contacts(full_name)") → jointure automatique
+        //   Supabase : on récupère toutes les colonnes de "deals"
+        //   + le champ "full_name" de la table "contacts" liée
+        //   via la clé étrangère "contact_id".
+        //
+        // .order("created_at") → tri chronologique pour garder
+        //   l'ordre d'insertion dans chaque colonne.
+        //
+        // Grâce au RLS, seuls les deals de l'utilisateur connecté
+        // sont retournés.
+        supabase
+          .from("deals")
+          .select("*, contacts(full_name)")
+          .order("created_at"),
+
+        // --------------------------------------------------
+        // REQUÊTE 2 : Récupérer la liste des contacts
+        // --------------------------------------------------
+        // On récupère uniquement l'ID et le nom complet des contacts
+        // pour alimenter le menu déroulant (<select>) du formulaire.
+        supabase
+          .from("contacts")
+          .select("id, full_name")
+          .order("full_name"),
+      ]);
+
+      // ======================================================
+      // ÉTAPE 3 : Organiser les deals par statut (colonnes)
+      // ======================================================
+      // On part d'un objet vide avec 4 tableaux vides,
+      // puis on parcourt tous les deals reçus pour les répartir
+      // dans la bonne colonne selon leur champ "status".
+      //
+      // Exemple : un deal avec status = "Conclu" est ajouté
+      // au tableau colonnesTriees["Conclu"].
+
+      const deals: Deal[] = resultatDeals.data ?? [];
+
+      const colonnesTriees: Record<string, Deal[]> = {
+        "À contacter":    [],
+        "En négociation": [],
+        "Conclu":         [],
+        "Perdu":          [],
+      };
+
+      // On répartit chaque deal dans sa colonne
+      for (const deal of deals) {
+        // Vérification de sécurité : si le statut n'est pas reconnu,
+        // on le met par défaut dans "À contacter"
+        const colonneCible = colonnesTriees[deal.status] ? deal.status : "À contacter";
+        colonnesTriees[colonneCible].push(deal);
+      }
+
+      // On met à jour l'état des colonnes et des contacts
+      setColonnes(colonnesTriees);
+      setListeContacts(resultatContacts.data ?? []);
+
+      // Toutes les données sont chargées → on masque le spinner
+      setChargement(false);
+    }
+
+    // On appelle notre fonction async
+    verifierSessionEtChargerDonnees();
+  }, [router]);
+
 
   // ----------------------------------------------------------
   // GESTIONNAIRE onDragEnd : le cœur du mécanisme DnD
@@ -134,9 +281,12 @@ export default function PageOpportunites() {
   // PRINCIPE GÉNÉRAL :
   //   1. On copie le tableau source, on retire la carte.
   //   2. On copie le tableau destination, on insère la carte.
-  //   3. On met à jour l'état → React re-rende → interface mise à jour.
+  //   3. On met à jour l'état local → React re-rende → interface mise à jour.
+  //   4. *** NOUVEAU *** On fait un UPDATE dans Supabase pour
+  //      persister le changement de statut en base de données.
   // ----------------------------------------------------------
-  function gererFinDrag(result: DropResult) {
+
+  async function gererFinDrag(result: DropResult) {
 
     const { source, destination } = result;
 
@@ -174,11 +324,129 @@ export default function PageOpportunites() {
       [source.droppableId]:      colonneSrc,
       [destination.droppableId]: colonneDest,
     });
+
+    // ======================================================
+    // *** SYNCHRONISATION AVEC SUPABASE ***
+    // ======================================================
+    // Si la carte a changé de colonne (= changement de statut),
+    // on persiste ce changement dans la base de données.
+    //
+    // .from("deals") → on cible la table "deals"
+    // .update({ status: ... }) → on modifie uniquement la colonne "status"
+    // .eq("id", ...) → condition WHERE : on cible le deal par son ID
+    //
+    // POURQUOI ON LE FAIT APRÈS le setState ?
+    // → Pour une meilleure UX : l'interface se met à jour INSTANTANÉMENT
+    //   (optimistic update), et la synchro base se fait en arrière-plan.
+    //   Si l'UPDATE échoue, l'utilisateur pourra corriger en re-déplaçant.
+    //
+    // Le RLS garantit qu'un utilisateur ne peut modifier que SES propres deals.
+    if (source.droppableId !== destination.droppableId) {
+      await supabase
+        .from("deals")
+        .update({ status: destination.droppableId })
+        .eq("id", carteDeplacee.id);
+    }
   }
 
+
   // ----------------------------------------------------------
-  // RENDU JSX
+  // FONCTION : Ajouter une opportunité
   // ----------------------------------------------------------
+  // Cette fonction est appelée quand l'utilisateur soumet le formulaire.
+  // Étapes :
+  //   1. Récupérer l'utilisateur connecté via getUser()
+  //   2. Insérer un nouveau deal dans Supabase avec user_id
+  //   3. Ajouter le deal dans la colonne "À contacter" (statut par défaut)
+
+  async function ajouterOpportunite() {
+    // Vérification basique : le titre est obligatoire
+    if (!nouveauTitre.trim()) return;
+
+    // ======================================================
+    // SÉCURITÉ : Récupérer l'utilisateur courant
+    // ======================================================
+    // On utilise getUser() pour obtenir l'identité vérifiée.
+    // Le user_id est INDISPENSABLE pour le RLS.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // ======================================================
+    // INSERT : Créer le nouveau deal dans Supabase
+    // ======================================================
+    // .insert({...}) → insère une nouvelle ligne dans la table "deals"
+    // .select("*, contacts(full_name)") → retourne la ligne créée AVEC
+    //   la jointure pour avoir le nom du contact directement
+    // .single() → on attend une seule ligne en retour
+    //
+    // IMPORTANT : on passe explicitement "user_id: user.id" pour
+    // garantir l'isolation des données entre utilisateurs (RLS).
+    //
+    // Le statut initial est TOUJOURS "À contacter" (première colonne).
+    // Le montant est converti en nombre avec parseFloat (ou 0 si vide).
+    const { data, error } = await supabase
+      .from("deals")
+      .insert({
+        user_id: user.id,
+        title: nouveauTitre.trim(),
+        amount: parseFloat(nouveauMontant) || 0,
+        contact_id: contactSelectionne || null,
+        status: "À contacter",
+      })
+      .select("*, contacts(full_name)")
+      .single();
+
+    // Si l'insertion a réussi :
+    if (!error && data) {
+      // On ajoute le nouveau deal dans la colonne "À contacter"
+      // en créant un nouvel objet colonnes (pour que React détecte le changement)
+      setColonnes({
+        ...colonnes,
+        "À contacter": [...colonnes["À contacter"], data],
+      });
+
+      // On réinitialise les champs du formulaire
+      setNouveauTitre("");
+      setNouveauMontant("");
+      setContactSelectionne("");
+
+      // On ferme le formulaire
+      setFormulaireOuvert(false);
+    }
+  }
+
+
+  // ----------------------------------------------------------
+  // FONCTION : Déconnexion
+  // ----------------------------------------------------------
+  // Appelle supabase.auth.signOut() pour détruire la session,
+  // puis redirige vers la page de login.
+
+  async function gererDeconnexion() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+
+  // ----------------------------------------------------------
+  // ÉTAT DE CHARGEMENT
+  // ----------------------------------------------------------
+  // Tant que "chargement" est true, on affiche un écran d'attente
+  // au lieu de la page. Ça évite un "flash" de données vides.
+
+  if (chargement) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-500">Chargement de vos opportunités…</p>
+      </div>
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // RENDU JSX : Layout identique à la maquette validée
+  // ----------------------------------------------------------
+
   return (
     // --- CONTENEUR GLOBAL : disposition en 2 colonnes (sidebar + contenu) ---
     <div className="flex h-full min-h-screen">
@@ -233,28 +501,108 @@ export default function PageOpportunites() {
 
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-gray-700">
-              {utilisateur.nomComplet}
+              {emailUtilisateur}
             </span>
             <Image src="/user.png" alt="Utilisateur" width={20} height={20} />
-            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
+            <button
+              onClick={gererDeconnexion}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
               Déconnexion
             </button>
           </div>
         </header>
 
         {/* ---------------------------------------------------- */}
-        {/* CONTENU PRINCIPAL : Bouton + Tableau Kanban            */}
+        {/* CONTENU PRINCIPAL : Bouton + Formulaire + Kanban      */}
         {/* ---------------------------------------------------- */}
         <main className="flex-1 overflow-x-auto p-8">
 
           {/* ================================================== */}
           {/* BOUTON "AJOUTER UNE OPPORTUNITÉ"                    */}
           {/* ================================================== */}
+          {/* Au clic, on bascule l'état "formulaireOuvert"       */}
           <div className="mb-8 flex justify-end">
-            <button className="rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+            <button
+              onClick={() => setFormulaireOuvert(!formulaireOuvert)}
+              className="rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
               + Ajouter une opportunité
             </button>
           </div>
+
+          {/* ================================================== */}
+          {/* FORMULAIRE D'AJOUT (affiché conditionnellement)      */}
+          {/* ================================================== */}
+          {/* Ce bloc ne s'affiche que si "formulaireOuvert" est true. */}
+          {/* Il contient 3 champs : titre, montant, contact (select). */}
+          {/* Le statut est automatiquement "À contacter".             */}
+          {formulaireOuvert && (
+            <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6">
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                Nouvelle opportunité
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* --- Champ : Titre de l'opportunité --- */}
+                <input
+                  type="text"
+                  placeholder="Titre de l'opportunité"
+                  value={nouveauTitre}
+                  onChange={(e) => setNouveauTitre(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
+                />
+
+                {/* --- Champ : Montant estimé --- */}
+                <input
+                  type="number"
+                  placeholder="Montant (€)"
+                  value={nouveauMontant}
+                  onChange={(e) => setNouveauMontant(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
+                />
+
+                {/* --- Champ : Contact (menu déroulant dynamique) --- */}
+                {/* Ce <select> est alimenté par la liste des contacts */}
+                {/* récupérée depuis Supabase au chargement de la page. */}
+                {/* La valeur sélectionnée est l'ID du contact (contact_id) */}
+                {/* qui sera lié au deal en base.                          */}
+                <select
+                  value={contactSelectionne}
+                  onChange={(e) => setContactSelectionne(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">-- Sélectionner un contact --</option>
+                  {listeContacts.map((contact) => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* --- Info : statut par défaut --- */}
+              <p className="mt-3 text-xs text-gray-400">
+                Statut initial : <span className="font-medium text-blue-500">À contacter</span>
+              </p>
+
+              {/* --- Boutons : Valider ou Annuler --- */}
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={ajouterOpportunite}
+                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                >
+                  Valider
+                </button>
+                <button
+                  onClick={() => setFormulaireOuvert(false)}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ================================================== */}
           {/* TABLEAU KANBAN — DragDropContext                     */}
@@ -284,7 +632,8 @@ export default function PageOpportunites() {
                 //   droppableId : identifiant unique de la zone.
                 //     Ici on utilise le nom du statut directement
                 //     (ex: "À contacter") car c'est aussi la clé
-                //     de notre objet "colonnes".
+                //     de notre objet "colonnes" ET la valeur du
+                //     champ "status" en base de données.
                 //
                 // Droppable utilise le pattern "render prop" :
                 //   il appelle ses enfants comme une fonction
@@ -381,18 +730,18 @@ export default function PageOpportunites() {
                               >
                                 {/* Titre du deal */}
                                 <p className="text-sm font-semibold text-gray-800 leading-snug">
-                                  {deal.titre}
+                                  {deal.title}
                                 </p>
 
-                                {/* Contact associé */}
+                                {/* Nom du contact associé (via la jointure Supabase) */}
                                 <p className="mt-1 text-xs text-gray-400">
-                                  {deal.contact}
+                                  {deal.contacts?.full_name ?? "Aucun contact"}
                                 </p>
 
                                 {/* Séparateur + Montant */}
                                 <div className="mt-3 flex items-center justify-between">
                                   <span className="text-xs font-bold text-indigo-600">
-                                    {deal.montant.toLocaleString("fr-FR")} €
+                                    {deal.amount.toLocaleString("fr-FR")} €
                                   </span>
                                   {/* Petite poignée visuelle */}
                                   <span className="text-gray-300 select-none text-sm">⠿</span>

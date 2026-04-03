@@ -1,34 +1,33 @@
 // ============================================================
 // PAGE PRINCIPALE : TABLEAU DE BORD (DASHBOARD)
 // ============================================================
+// Cette page est désormais DYNAMIQUE : elle récupère les vraies
+// données depuis Supabase au lieu d'utiliser des mock data.
+//
+// C'est un Client Component ("use client") car on utilise :
+//   - useState  : pour stocker les stats, l'email, l'état de chargement
+//   - useEffect : pour vérifier la session et charger les données au montage
+//   - useRouter : pour rediriger vers /login si pas de session
+// ============================================================
 
+"use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
 
 
 // ============================================================
-// SECTION 1 : DONNÉES FICTIVES (MOCK DATA)
-// ===========================================================
-
-/** Informations de l'utilisateur connecté (simulé) */
-const utilisateur = {
-  nomComplet: "Jean Dupont",
-  prenom: "Jean",
-};
-
-/** Statistiques affichées sur les cartes du dashboard */
-const statistiques = {
-  totalContacts: 124,
-  opportunitesEnCours: 12,
-  chiffreAffairesPotentiel: 45000,
-};
+// SECTION 1 : DONNÉES STATIQUES (ne changent pas)
+// ============================================================
 
 /** Éléments du menu de navigation dans la sidebar. */
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/", actif: true, icone: "/dashbord.png" },
-  { nom: "Entreprises", href: "/entreprises", actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts", href: "/contacts", actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités", href: "/opportunites", actif: false, icone: "/opportunites.png" },
+  { nom: "Tableau de bord", href: "/",             actif: true,  icone: "/dashbord.png" },
+  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
+  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/contacts.png" },
+  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
 ];
 
 
@@ -37,14 +36,15 @@ const elementsNavigation = [
 // ============================================================
 
 /**
- Formate un nombre en format monétaire français.
- On utilise l'API native Intl.NumberFormat pour un formatage propre.
+ * Formate un nombre en format monétaire français.
+ * On utilise l'API native Intl.NumberFormat pour un formatage propre.
+ * Exemple : 45000 → "45 000 €"
  */
 function formaterMontant(montant: number): string {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
-    minimumFractionDigits: 0, // Pas de centimes pour un affichage épuré
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(montant);
 }
@@ -55,6 +55,179 @@ function formaterMontant(montant: number): string {
 // ============================================================
 
 export default function PageTableauDeBord() {
+
+  // ----------------------------------------------------------
+  // ÉTATS LOCAUX (useState)
+  // ----------------------------------------------------------
+
+  /** Email de l'utilisateur connecté (récupéré depuis la session Supabase) */
+  const [emailUtilisateur, setEmailUtilisateur] = useState("");
+
+  /** Nombre total de contacts dans la table "contacts" */
+  const [totalContacts, setTotalContacts] = useState(0);
+
+  /** Nombre d'opportunités dont le statut est "À contacter" ou "En négociation" */
+  const [opportunitesEnCours, setOpportunitesEnCours] = useState(0);
+
+  /** Somme des montants de tous les deals qui ne sont pas "Perdu" */
+  const [chiffreAffaires, setChiffreAffaires] = useState(0);
+
+  /** Indicateur de chargement : true tant que les données n'ont pas été récupérées */
+  const [chargement, setChargement] = useState(true);
+
+  // ----------------------------------------------------------
+  // HOOK DE NAVIGATION
+  // ----------------------------------------------------------
+  const router = useRouter();
+
+
+  // ----------------------------------------------------------
+  // useEffect : VÉRIFICATION DE SESSION + CHARGEMENT DES DONNÉES
+  // ----------------------------------------------------------
+  // Ce useEffect se lance UNE SEULE FOIS au montage du composant ([] vide).
+  // Étapes :
+  //   1. On vérifie si l'utilisateur a une session active (est-il connecté ?)
+  //   2. Si NON → redirection vers /login
+  //   3. Si OUI → on lance les 3 requêtes Supabase en parallèle
+
+  useEffect(() => {
+    async function verifierSessionEtChargerDonnees() {
+
+      // ======================================================
+      // ÉTAPE 1 : Vérifier la session utilisateur
+      // ======================================================
+      // supabase.auth.getSession() retourne un objet contenant
+      // "session" (les infos de connexion) ou null si pas connecté.
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Si pas de session → l'utilisateur n'est pas connecté
+      // On le redirige vers la page de login et on arrête tout.
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      // On récupère l'email de l'utilisateur depuis sa session
+      // pour l'afficher dans le header et le bandeau de bienvenue.
+      setEmailUtilisateur(session.user.email ?? "");
+
+      // ======================================================
+      // ÉTAPE 2 : Lancer les 3 requêtes Supabase en parallèle
+      // ======================================================
+      // On utilise Promise.all pour exécuter les 3 requêtes EN MÊME TEMPS
+      // au lieu de les faire une par une (= plus rapide).
+
+      const [resultatContacts, resultatOpportunites, resultatDeals] = await Promise.all([
+
+        // --------------------------------------------------
+        // REQUÊTE 1 : Compter le nombre total de contacts
+        // --------------------------------------------------
+        // .from("contacts") → on cible la table "contacts"
+        // .select("*", { count: "exact", head: true })
+        //   - count: "exact" → Supabase calcule le nombre total de lignes
+        //   - head: true → on ne récupère PAS les données, juste le comptage
+        //   (= plus léger et plus rapide qu'un SELECT classique)
+        // Grâce au RLS, seuls les contacts du user connecté sont comptés.
+        supabase
+          .from("contacts")
+          .select("*", { count: "exact", head: true }),
+
+        // --------------------------------------------------
+        // REQUÊTE 2 : Compter les opportunités "en cours"
+        // --------------------------------------------------
+        // On veut uniquement les deals avec le statut :
+        //   - "À contacter" OU "En négociation"
+        // .in("status", [...]) filtre sur plusieurs valeurs possibles
+        //   (c'est l'équivalent SQL de : WHERE status IN ('...', '...'))
+        // head: true → on veut juste le nombre, pas les lignes.
+        supabase
+          .from("deals")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["À contacter", "En négociation"]),
+
+        // --------------------------------------------------
+        // REQUÊTE 3 : Récupérer les montants des deals non perdus
+        // --------------------------------------------------
+        // Ici on récupère UNIQUEMENT la colonne "amount" de chaque deal
+        // dont le statut N'EST PAS "Perdu".
+        // .neq("status", "Perdu") → filtre : status ≠ "Perdu"
+        //   (équivalent SQL : WHERE status != 'Perdu')
+        // .select("amount") → on ne récupère que la colonne montant
+        //   (pas besoin du titre ou du statut pour faire la somme)
+        supabase
+          .from("deals")
+          .select("amount")
+          .neq("status", "Perdu"),
+      ]);
+
+      // ======================================================
+      // ÉTAPE 3 : Extraire et stocker les résultats
+      // ======================================================
+
+      // Résultat requête 1 : le comptage est dans ".count"
+      // On utilise ?? 0 comme valeur par défaut si jamais c'est null.
+      setTotalContacts(resultatContacts.count ?? 0);
+
+      // Résultat requête 2 : même logique, le count est directement dispo
+      setOpportunitesEnCours(resultatOpportunites.count ?? 0);
+
+      // Résultat requête 3 : on a un tableau d'objets [{amount: 5000}, {amount: 12000}, ...]
+      // On utilise .reduce() pour additionner tous les montants :
+      //   - "somme" est l'accumulateur (commence à 0)
+      //   - "deal.amount" est le montant de chaque deal
+      //   - À chaque itération, on ajoute le montant à la somme
+      const deals = resultatDeals.data ?? [];
+      const somme = deals.reduce((somme, deal) => somme + (deal.amount ?? 0), 0);
+      setChiffreAffaires(somme);
+
+      // Toutes les données sont chargées → on masque le spinner
+      setChargement(false);
+    }
+
+    // On appelle notre fonction async
+    verifierSessionEtChargerDonnees();
+  }, [router]);
+
+
+  // ----------------------------------------------------------
+  // FONCTION : Déconnexion
+  // ----------------------------------------------------------
+  // Appelle supabase.auth.signOut() pour détruire la session,
+  // puis redirige vers la page de login.
+
+  async function gererDeconnexion() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
+
+  // ----------------------------------------------------------
+  // ÉTAT DE CHARGEMENT
+  // ----------------------------------------------------------
+  // Tant que "chargement" est true, on affiche un écran d'attente
+  // au lieu du dashboard. Ça évite un "flash" de données vides.
+
+  if (chargement) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-500">Chargement de vos statistiques…</p>
+      </div>
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // EXTRACTION DU PRÉNOM depuis l'email
+  // ----------------------------------------------------------
+  // On prend la partie avant le "@" de l'email pour un affichage convivial.
+  // Exemple : "jean.dupont@mail.com" → "jean.dupont"
+  const prenom = emailUtilisateur.split("@")[0];
+
+
+  // ----------------------------------------------------------
+  // RENDU JSX : Layout identique à la maquette validée
+  // ----------------------------------------------------------
+
   return (
     // --- CONTENEUR GLOBAL : disposition en 2 colonnes (sidebar + contenu) ---
     <div className="flex h-full min-h-screen">
@@ -88,7 +261,7 @@ export default function PageTableauDeBord() {
                       }
                     `}
                   >
-                    {/* Icône du lien — fichier à placer dans /public/icones/ */}
+                    {/* Icône du lien — fichier à placer dans /public/ */}
                     <Image src={element.icone} alt={element.nom} width={20} height={20} />
                     {/* Texte du lien */}
                     {element.nom}
@@ -115,12 +288,15 @@ export default function PageTableauDeBord() {
           {/* Informations de l'utilisateur connecté + bouton déconnexion */}
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-gray-700">
-              {utilisateur.nomComplet}
+              {emailUtilisateur}
             </span>
             {/* Icône utilisateur (avatar placeholder) */}
             <Image src="/user.png" alt="Utilisateur" width={20} height={20} />
-            {/* Lien de déconnexion (non fonctionnel pour le moment) */}
-            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
+            {/* Bouton de déconnexion — appelle gererDeconnexion() au clic */}
+            <button
+              onClick={gererDeconnexion}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
               Déconnexion
             </button>
           </div>
@@ -147,9 +323,9 @@ export default function PageTableauDeBord() {
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Total des contacts
               </p>
-              {/* Valeur numérique (grande et en gras) */}
+              {/* Valeur dynamique récupérée depuis Supabase */}
               <p className="mt-1 text-3xl font-bold text-gray-900">
-                {statistiques.totalContacts}
+                {totalContacts}
               </p>
             </div>
 
@@ -162,7 +338,7 @@ export default function PageTableauDeBord() {
                 Opportunités en cours
               </p>
               <p className="mt-1 text-3xl font-bold text-gray-900">
-                {statistiques.opportunitesEnCours}
+                {opportunitesEnCours}
               </p>
             </div>
 
@@ -176,7 +352,7 @@ export default function PageTableauDeBord() {
               </p>
               {/* Montant formaté via notre fonction utilitaire */}
               <p className="mt-1 text-3xl font-bold text-gray-900">
-                {formaterMontant(statistiques.chiffreAffairesPotentiel)}
+                {formaterMontant(chiffreAffaires)}
               </p>
             </div>
           </div>
@@ -188,7 +364,7 @@ export default function PageTableauDeBord() {
             {/* Texte de bienvenue (partie gauche) */}
             <div className="relative z-10 max-w-xl">
               <h3 className="text-2xl font-bold text-gray-900">
-                Bienvenue, {utilisateur.prenom}.
+                Bienvenue, {prenom}.
               </h3>
               <p className="mt-3 leading-relaxed text-gray-600">
                 Vos indicateurs de performance sont à jour. L&apos;atelier de précision
