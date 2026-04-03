@@ -227,9 +227,10 @@ export default function PageEntreprises() {
                   </div>
                   {/* Actions */}
                   <div className="mt-5 flex items-center justify-between">
-                    <button className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+                    <a href="/contacts"><button className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
                       Contacter
                     </button>
+                    </a>
                     <button onClick={() => supprimerEntreprise(entreprise.id)}>
                       <Image src="/delete.png" alt="Supprimer entreprise" width={24} height={24} />
                     </button>
