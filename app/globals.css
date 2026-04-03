@@ -9,6 +9,10 @@
 /* Import de Tailwind CSS v4 - inclut toutes les classes utilitaires */
 @import "tailwindcss";
 
+/* Désactive le dark mode automatique de Tailwind v4 */
+/* Sans ça, les couleurs s'inversent si l'OS est en mode sombre */
+@custom-variant dark (&:is(.dark *));
+
 /* --- THÈME PERSONNALISÉ --- */
 /* On déclare ici nos couleurs et polices pour les réutiliser via Tailwind. */
 /* "inline" signifie que ces valeurs sont injectées directement dans le CSS. */
