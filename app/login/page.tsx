@@ -1,16 +1,7 @@
 // ============================================================
 // PAGE DE CONNEXION / INSCRIPTION (app/login/page.tsx)
 // ============================================================
-// Cette page gère l'authentification de l'utilisateur via Supabase Auth.
-// Elle propose deux actions :
-//   1. Se connecter (signInWithPassword) — pour un compte existant
-//   2. S'inscrire (signUp) — pour créer un nouveau compte
-//
-// C'est un Client Component ("use client") car on utilise :
-//   - useState : pour stocker l'email, le mot de passe, les erreurs, etc.
-//   - useRouter : pour rediriger l'utilisateur après connexion
-//   - Des événements (onClick, onSubmit) : interaction avec le formulaire
-// ============================================================
+
 
 "use client";
 
@@ -29,39 +20,30 @@ export default function PageConnexion() {
   // ÉTATS LOCAUX (useState)
   // ----------------------------------------------------------
 
-  /** Valeur du champ email du formulaire */
   const [email, setEmail] = useState("");
 
-  /** Valeur du champ mot de passe du formulaire */
   const [motDePasse, setMotDePasse] = useState("");
 
-  /** Message d'erreur affiché sous le formulaire en cas de problème */
   const [erreur, setErreur] = useState("");
 
-  /** Indicateur de chargement pour désactiver les boutons pendant un appel API */
   const [chargement, setChargement] = useState(false);
 
   // ----------------------------------------------------------
   // HOOK DE NAVIGATION
   // ----------------------------------------------------------
-  // useRouter() de Next.js (App Router) permet de naviguer
-  // programmatiquement vers une autre page après connexion.
+  
   const router = useRouter();
 
 
   // ----------------------------------------------------------
   // FONCTION : Connexion (Se connecter)
   // ----------------------------------------------------------
-  // Appelle supabase.auth.signInWithPassword avec l'email et le mot de passe.
-  // En cas de succès → redirige vers le Dashboard ("/").
-  // En cas d'erreur → affiche le message d'erreur sous le formulaire.
+  
 
   async function gererConnexion() {
-    // On réinitialise les messages avant chaque tentative
     setErreur("");
     setChargement(true);
 
-    // Appel à Supabase Auth : tentative de connexion
     const { error } = await supabase.auth.signInWithPassword({
       email: email,
       password: motDePasse,
@@ -70,8 +52,7 @@ export default function PageConnexion() {
     setChargement(false);
 
     if (error) {
-      // Supabase renvoie un message d'erreur en anglais,
-      // on le traduit pour les cas les plus courants.
+      
       if (error.message.includes("Invalid login credentials")) {
         setErreur("Email ou mot de passe incorrect.");
       } else {
@@ -80,7 +61,6 @@ export default function PageConnexion() {
       return;
     }
 
-    // Connexion réussie → redirection vers le tableau de bord
     router.push("/");
   }
 
@@ -88,15 +68,12 @@ export default function PageConnexion() {
   // ----------------------------------------------------------
   // FONCTION : Inscription (S'inscrire)
   // ----------------------------------------------------------
-  // Appelle supabase.auth.signUp avec l'email et le mot de passe.
-  // Pas de vérification d'email : le compte est actif immédiatement.
-  // En cas de succès → redirige vers le Dashboard ("/").
+  
 
   async function gererInscription() {
     setErreur("");
     setChargement(true);
 
-    // Appel à Supabase Auth : création du compte
     const { error } = await supabase.auth.signUp({
       email: email,
       password: motDePasse,
@@ -113,7 +90,6 @@ export default function PageConnexion() {
       return;
     }
 
-    // Inscription réussie → redirection directe vers le tableau de bord
     router.push("/");
   }
 
@@ -137,7 +113,6 @@ export default function PageConnexion() {
         </div>
 
         {/* --- Formulaire --- */}
-        {/* On utilise onSubmit avec preventDefault pour empêcher le rechargement */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -146,7 +121,6 @@ export default function PageConnexion() {
           className="space-y-5"
         >
 
-          {/* Champ Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Adresse email
@@ -162,7 +136,6 @@ export default function PageConnexion() {
             />
           </div>
 
-          {/* Champ Mot de passe */}
           <div>
             <label htmlFor="motDePasse" className="block text-sm font-medium text-gray-700">
               Mot de passe
@@ -181,9 +154,7 @@ export default function PageConnexion() {
           {/* ================================================== */}
           {/* MESSAGES D'ERREUR / SUCCÈS                          */}
           {/* ================================================== */}
-          {/* On affiche conditionnellement un message rouge (erreur) */}
-          {/* ou vert (succès) sous les champs du formulaire.         */}
-
+         
           {erreur && (
             <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {erreur}
@@ -194,7 +165,6 @@ export default function PageConnexion() {
           {/* BOUTONS D'ACTION                                     */}
           {/* ================================================== */}
 
-          {/* Bouton "Se connecter" — type submit, déclenche le onSubmit du formulaire */}
           <button
             type="submit"
             disabled={chargement}
@@ -203,7 +173,6 @@ export default function PageConnexion() {
             {chargement ? "Chargement…" : "Se connecter"}
           </button>
 
-          {/* Bouton "S'inscrire" — type button pour ne PAS soumettre le formulaire */}
           <button
             type="button"
             disabled={chargement}

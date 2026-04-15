@@ -84,7 +84,6 @@ export default function PageOpportunites() {
 
       setEmailUtilisateur(session.user.email ?? "");
 
-      // 2 requêtes en parallèle (Promise.all = plus rapide)
       const [resultatDeals, resultatContacts] = await Promise.all([
         // Deals + jointure pour récupérer le nom du contact lié
         supabase.from("deals").select("*, contacts(full_name)").order("created_at"),
@@ -92,7 +91,6 @@ export default function PageOpportunites() {
         supabase.from("contacts").select("id, full_name").order("full_name"),
       ]);
 
-      // Répartir les deals dans les colonnes selon leur statut
       const deals: Deal[] = resultatDeals.data ?? [];
       const colonnesTriees: Record<string, Deal[]> = {
         "À contacter": [], "En négociation": [], "Conclu": [], "Perdu": [],
@@ -137,8 +135,7 @@ export default function PageOpportunites() {
       [destination.droppableId]: colonneDest,
     });
 
-    // Si changement de colonne → UPDATE du statut dans Supabase
-    // On le fait APRÈS le setState pour que l'UI réagisse instantanément
+    
     if (source.droppableId !== destination.droppableId) {
       await supabase
         .from("deals")
@@ -147,8 +144,6 @@ export default function PageOpportunites() {
     }
   }
 
-  // Ajout d'une opportunité : INSERT avec user_id explicite (RLS)
-  // Statut par défaut = "À contacter" (première colonne)
   async function ajouterOpportunite() {
     if (!nouveauTitre.trim()) return;
 
