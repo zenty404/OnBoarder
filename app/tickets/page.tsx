@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 type Ticket = {
   id: string;
   title: string;
+  email: string;
   message: string;
   status: "Ouvert" | "Résolu" | "Fermé";
   created_at: string;
@@ -32,7 +33,7 @@ const elementsNavigation = [
   { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/entreprises.png" },
   { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/contacts.png" },
   { nom: "Opportunités",    href: "/opportunites", actif: false, icone: "/opportunites.png" },
-  { nom: "Ticket",          href: "/tickets",      actif: true,  icone: "/opportunites.png" },
+  { nom: "Ticket",          href: "/tickets",      actif: true,  icone: "/tickets.png" },
 ];
 
 // ============================================================
@@ -60,6 +61,8 @@ export default function PageTickets() {
   const [formulaireOuvert, setFormulaireOuvert] = useState(false);
 
   const [nouveauTitre, setNouveauTitre] = useState("");
+  const [nouveauMail, setNouveauEmail] = useState("");
+
   const [nouveauMessage, setNouveauMessage] = useState("");
 
   const router = useRouter();
@@ -105,6 +108,7 @@ export default function PageTickets() {
       .insert({
         user_id: user.id,
         title: nouveauTitre.trim(),
+        email: nouveauMail.trim(), 
         message: nouveauMessage.trim(),
       })
       .select("*")
@@ -217,6 +221,13 @@ export default function PageTickets() {
                   onChange={(e) => setNouveauTitre(e.target.value)}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
                 />
+                <input
+                  type="email"
+                  placeholder="Votre email"
+                  value={nouveauMail}
+                  onChange={(e) => setNouveauEmail(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
+                />
 
                 <textarea
                   placeholder="Décrivez votre demande ou problème en détail…"
@@ -260,12 +271,15 @@ export default function PageTickets() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <h3 className="text-base font-semibold text-gray-900">{ticket.title}</h3>
+
                     <span
                       className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${couleurStatut(ticket.status)}`}
                     >
                       {ticket.status}
                     </span>
                   </div>
+                  <p >{ticket.email}</p>                  
+
 
                   <p className="mt-3 text-sm text-gray-600 whitespace-pre-wrap">{ticket.message}</p>
 
