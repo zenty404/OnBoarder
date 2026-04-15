@@ -19,11 +19,14 @@ type Entreprise = {
 
 
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: true,  icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: true, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: false,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/opportunites.png" },
+
 ];
+
 
 
 export default function PageEntreprises() {
@@ -145,7 +148,6 @@ export default function PageEntreprises() {
           </div>
         </header>
 
-        {/* CONTENU */}
         <main className="flex-1 overflow-y-auto p-8">
 
           <div className="mb-8 flex justify-end">

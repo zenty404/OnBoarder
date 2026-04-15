@@ -15,10 +15,12 @@ import { supabase } from "@/lib/supabase";
 // ============================================================
 
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",             actif: true,  icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: true, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: false,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/opportunites.png" },
+
 ];
 
 
@@ -242,7 +244,7 @@ export default function PageTableauDeBord() {
           {/* ================================================== */}
           {/* CARTES DE STATISTIQUES (3 cartes en ligne)           */}
           {/* ================================================== */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100">
@@ -275,7 +277,6 @@ export default function PageTableauDeBord() {
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Chiffre d'affaires potentiel
               </p>
-              {/* Montant formaté via notre fonction utilitaire */}
               <p className="mt-1 text-3xl font-bold text-gray-900">
                 {formaterMontant(chiffreAffaires)}
               </p>
@@ -285,19 +286,18 @@ export default function PageTableauDeBord() {
           {/* ================================================== */}
           {/* BANDEAU DE BIENVENUE                                 */}
           {/* ================================================== */}
-          <div className="relative mt-8 overflow-hidden rounded-2xl bg-gray-100 p-8">
-            <div className="relative z-10 max-w-xl">
+          <div className="rounded-2xl bg-gray-100 p-8">
+            <div className="z-10 max-w-xl">
               <h3 className="text-2xl font-bold text-gray-900">
                 Bienvenue, {prenom}.
               </h3>
-              <p className="mt-3 leading-relaxed text-gray-600">
+              <p className="mt-3  text-gray-600">
                 Vos indicateurs de performance sont à jour. L'atelier de précision
                 analyse vos données pour optimiser vos prochaines opportunités
                 commerciales.
               </p>
             </div>
 
-            <div className="absolute right-0 top-0 h-full w-1/3 rounded-l-3xl bg-gradient-to-l from-indigo-200/80 via-indigo-100/50 to-transparent" />
           </div>
 
         </main>

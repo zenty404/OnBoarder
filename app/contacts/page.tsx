@@ -1,6 +1,4 @@
 // PAGE CONTACTS — Client Component dynamique (Supabase)
-// Vérifie la session, fetch contacts + entreprises, gère l'ajout et la suppression.
-// Le formulaire d'ajout utilise un <select> dynamique pour lier le company_id.
 
 "use client";
 
@@ -9,9 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
-// --- Types ---
 
-/** Contact issu de la table "contacts" + jointure companies(name) */
 type Contact = {
   id: string;
   full_name: string;
@@ -19,29 +15,26 @@ type Contact = {
   phone: string;
   company_id: string;
   created_at: string;
-  companies: { name: string } | null; // jointure Supabase
+  companies: { name: string } | null; 
 };
 
-/** Entreprise simplifiée (pour le menu déroulant du formulaire) */
 type Entreprise = {
   id: string;
   name: string;
 };
 
-// --- Navigation sidebar ---
-
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",      actif: true,  icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: true,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/opportunites.png" },
+
 ];
 
-// --- Composant principal ---
 
 export default function PageContacts() {
 
-  // États locaux
   const [emailUtilisateur, setEmailUtilisateur] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
@@ -54,7 +47,6 @@ export default function PageContacts() {
 
   const router = useRouter();
 
-  // Au montage : vérifier la session + charger contacts et entreprises
   useEffect(() => {
     async function verifierSessionEtChargerDonnees() {
       // Vérification session — redirige vers /login si pas connecté
@@ -246,7 +238,7 @@ export default function PageContacts() {
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {contacts.map((contact) => (
-                <div key={contact.id} className="rounded-2xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md">
+                <div key={contact.id} className="rounded-2xl border border-gray-200 bg-white p-6  transition-shadow hover:shadow-md">
                   <div className="flex items-center gap-4">
                     <Image src="/user.png" alt="Contact" width={28} height={28} />
                     <h3 className="text-xl font-bold text-gray-900">{contact.full_name}</h3>
@@ -264,7 +256,7 @@ export default function PageContacts() {
                   </div>
                   <div className="mt-5 flex items-center justify-between">
                     <button onClick={() => router.push("/entreprises")} className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-                      Voir l&apos;entreprise
+                      Voir l'entreprise
                     </button>
                     <button onClick={() => supprimerContact(contact.id)}>
                       <Image src="/delete.png" alt="Supprimer contact" width={24} height={24} className="hover:cursor-pointer"/>
