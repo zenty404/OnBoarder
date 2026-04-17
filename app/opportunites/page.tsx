@@ -1,6 +1,5 @@
 // PAGE OPPORTUNITÉS — Kanban dynamique avec Drag & Drop (Supabase)
-// Vérifie la session, fetch deals + contacts, gère l'ajout.
-// Le drag & drop met à jour le statut en base (optimistic update).
+
 
 "use client";
 
@@ -9,9 +8,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
-// DragDropContext : enveloppe le Kanban, intercepte les events DnD
-// Droppable : zone de dépôt (= une colonne)
-// Draggable : carte déplaçable (= un deal)
+
 import {
   DragDropContext,
   Droppable,
@@ -19,9 +16,7 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 
-// --- Types ---
 
-/** Deal issu de la table "deals" + jointure contacts(full_name) */
 type Deal = {
   id: string;
   title: string;
@@ -31,25 +26,24 @@ type Deal = {
   contacts: { full_name: string } | null; // jointure Supabase
 };
 
-/** Contact simplifié (pour le menu déroulant du formulaire) */
 type Contact = {
   id: string;
   full_name: string;
 };
 
-// --- Constantes ---
 
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",             actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",  actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",     actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites", actif: true,  icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: false,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: true, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/tickets.png" },
+
 ];
 
-/** Les 4 colonnes du Kanban, dans l'ordre d'affichage */
+
 const ORDRE_COLONNES = ["À contacter", "En négociation", "Conclu", "Perdu"];
 
-/** Couleur du point de statut sur chaque carte */
 const COULEUR_STATUT: Record<string, string> = {
   "À contacter":    "bg-blue-400",
   "En négociation": "bg-yellow-400",
@@ -57,7 +51,6 @@ const COULEUR_STATUT: Record<string, string> = {
   "Perdu":          "bg-red-400",
 };
 
-// --- Composant principal ---
 
 export default function PageOpportunites() {
 
@@ -75,7 +68,6 @@ export default function PageOpportunites() {
 
   const router = useRouter();
 
-  // Au montage : vérifier la session + charger deals et contacts
   useEffect(() => {
     async function verifierSessionEtChargerDonnees() {
       // Vérification session — redirige vers /login si pas connecté
@@ -84,7 +76,6 @@ export default function PageOpportunites() {
 
       setEmailUtilisateur(session.user.email ?? "");
 
-      // 2 requêtes en parallèle (Promise.all = plus rapide)
       const [resultatDeals, resultatContacts] = await Promise.all([
         // Deals + jointure pour récupérer le nom du contact lié
         supabase.from("deals").select("*, contacts(full_name)").order("created_at"),
@@ -92,7 +83,6 @@ export default function PageOpportunites() {
         supabase.from("contacts").select("id, full_name").order("full_name"),
       ]);
 
-      // Répartir les deals dans les colonnes selon leur statut
       const deals: Deal[] = resultatDeals.data ?? [];
       const colonnesTriees: Record<string, Deal[]> = {
         "À contacter": [], "En négociation": [], "Conclu": [], "Perdu": [],
@@ -110,35 +100,28 @@ export default function PageOpportunites() {
     verifierSessionEtChargerDonnees();
   }, [router]);
 
-  // Drag & Drop : appelée quand l'utilisateur lâche une carte
-  // result.source = colonne + index d'origine
-  // result.destination = colonne + index d'arrivée (null si hors zone)
+  
   async function gererFinDrag(result: DropResult) {
     const { source, destination } = result;
 
-    // Lâché hors zone ou au même endroit → on ignore
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    // Copie des colonnes source et destination
     const colonneSrc  = [...colonnes[source.droppableId]];
     const colonneDest = source.droppableId === destination.droppableId
       ? colonneSrc
       : [...colonnes[destination.droppableId]];
 
-    // Retirer la carte de la source et l'insérer à destination
     const [carteDeplacee] = colonneSrc.splice(source.index, 1);
     colonneDest.splice(destination.index, 0, carteDeplacee);
 
-    // Mise à jour locale immédiate (optimistic update = UX fluide)
     setColonnes({
       ...colonnes,
       [source.droppableId]:      colonneSrc,
       [destination.droppableId]: colonneDest,
     });
 
-    // Si changement de colonne → UPDATE du statut dans Supabase
-    // On le fait APRÈS le setState pour que l'UI réagisse instantanément
+    
     if (source.droppableId !== destination.droppableId) {
       await supabase
         .from("deals")
@@ -147,8 +130,6 @@ export default function PageOpportunites() {
     }
   }
 
-  // Ajout d'une opportunité : INSERT avec user_id explicite (RLS)
-  // Statut par défaut = "À contacter" (première colonne)
   async function ajouterOpportunite() {
     if (!nouveauTitre.trim()) return;
 
@@ -176,13 +157,11 @@ export default function PageOpportunites() {
     }
   }
 
-  // Déconnexion
   async function gererDeconnexion() {
     await supabase.auth.signOut();
     router.push("/login");
   }
 
-  // Écran de chargement
   if (chargement) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -191,7 +170,6 @@ export default function PageOpportunites() {
     );
   }
 
-  // --- Rendu JSX ---
 
   return (
     <div className="flex h-full min-h-screen">
@@ -227,10 +205,8 @@ export default function PageOpportunites() {
         </div>
       </aside>
 
-      {/* ZONE PRINCIPALE */}
       <div className="flex flex-1 flex-col overflow-hidden">
 
-        {/* HEADER */}
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-4">
           <h2 className="text-lg font-semibold text-gray-900">Opportunités</h2>
           <div className="flex items-center gap-4">
@@ -242,10 +218,8 @@ export default function PageOpportunites() {
           </div>
         </header>
 
-        {/* CONTENU */}
         <main className="flex-1 overflow-x-auto p-8">
 
-          {/* Bouton d'ajout */}
           <div className="mb-8 flex justify-end">
             <button
               onClick={() => setFormulaireOuvert(!formulaireOuvert)}
@@ -255,7 +229,6 @@ export default function PageOpportunites() {
             </button>
           </div>
 
-          {/* Formulaire d'ajout (3 champs : titre, montant, contact) */}
           {formulaireOuvert && (
             <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="mb-4 text-lg font-semibold text-gray-900">Nouvelle opportunité</h3>
@@ -274,7 +247,6 @@ export default function PageOpportunites() {
                   onChange={(e) => setNouveauMontant(e.target.value)}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
                 />
-                {/* Menu déroulant dynamique — lié aux contacts de l'utilisateur */}
                 <select
                   value={contactSelectionne}
                   onChange={(e) => setContactSelectionne(e.target.value)}
@@ -300,7 +272,6 @@ export default function PageOpportunites() {
             </div>
           )}
 
-          {/* KANBAN — DragDropContext enveloppe toutes les colonnes */}
           <DragDropContext onDragEnd={gererFinDrag}>
             <div className="flex gap-5 items-start">
               {ORDRE_COLONNES.map((nomColonne) => (
@@ -318,7 +289,6 @@ export default function PageOpportunites() {
                         ${snapshot.isDraggingOver ? "bg-indigo-50" : "bg-gray-100"}
                       `}
                     >
-                      {/* En-tête : nom du statut + compteur */}
                       <div className="mb-3 flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
                           <span className={`h-2.5 w-2.5 rounded-full ${COULEUR_STATUT[nomColonne]}`} />
@@ -362,7 +332,6 @@ export default function PageOpportunites() {
                           </Draggable>
                         ))}
 
-                        {/* Placeholder obligatoire : maintient l'espace pendant le drag */}
                         {provided.placeholder}
                       </div>
                     </div>

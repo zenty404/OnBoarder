@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase";
 
 // --- Types ---
 
-/** Entreprise issue de la table "companies" dans Supabase */
 type Entreprise = {
   id: string;
   name: string;
@@ -18,20 +17,20 @@ type Entreprise = {
   created_at: string;
 };
 
-// --- Navigation sidebar ---
 
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: true,  icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",      actif: false, icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: true, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: false,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/tickets.png" },
+
 ];
 
-// --- Composant principal ---
+
 
 export default function PageEntreprises() {
 
-  // États locaux
   const [emailUtilisateur, setEmailUtilisateur] = useState("");
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -41,7 +40,6 @@ export default function PageEntreprises() {
 
   const router = useRouter();
 
-  // Au montage : vérifier la session + charger les entreprises
   useEffect(() => {
     async function verifierSessionEtChargerDonnees() {
       // Vérification session — redirige vers /login si pas connecté
@@ -50,8 +48,6 @@ export default function PageEntreprises() {
 
       setEmailUtilisateur(session.user.email ?? "");
 
-      // SELECT * FROM companies ORDER BY created_at DESC
-      // Le RLS filtre automatiquement par user_id
       const { data } = await supabase
         .from("companies")
         .select("*")
@@ -64,15 +60,12 @@ export default function PageEntreprises() {
     verifierSessionEtChargerDonnees();
   }, [router]);
 
-  // Ajout d'une entreprise : INSERT avec user_id explicite (RLS)
   async function ajouterEntreprise() {
     if (!nouveauNom.trim()) return;
 
-    // getUser() = identité vérifiée (plus sûr que getSession pour l'ID)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // INSERT dans "companies" — .select().single() retourne la ligne créée
     const { data, error } = await supabase
       .from("companies")
       .insert({ user_id: user.id, name: nouveauNom.trim(), website: nouveauSiteWeb.trim() })
@@ -87,7 +80,6 @@ export default function PageEntreprises() {
     }
   }
 
-  // Suppression d'une entreprise : DELETE WHERE id = ... (RLS protège)
   async function supprimerEntreprise(id: string) {
     const { error } = await supabase.from("companies").delete().eq("id", id);
     if (!error) {
@@ -95,13 +87,11 @@ export default function PageEntreprises() {
     }
   }
 
-  // Déconnexion : détruit la session et redirige
   async function gererDeconnexion() {
     await supabase.auth.signOut();
     router.push("/login");
   }
 
-  // Écran de chargement (évite un flash de contenu vide)
   if (chargement) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -110,12 +100,10 @@ export default function PageEntreprises() {
     );
   }
 
-  // --- Rendu JSX ---
 
   return (
     <div className="flex h-full min-h-screen">
 
-      {/* SIDEBAR */}
       <aside className="w-60 flex-shrink-0 border-r border-gray-200 bg-white">
         <div className="flex h-full flex-col">
           <div className="px-6 py-5">
@@ -146,7 +134,6 @@ export default function PageEntreprises() {
         </div>
       </aside>
 
-      {/* ZONE PRINCIPALE */}
       <div className="flex flex-1 flex-col">
 
         {/* HEADER */}
@@ -161,20 +148,17 @@ export default function PageEntreprises() {
           </div>
         </header>
 
-        {/* CONTENU */}
         <main className="flex-1 overflow-y-auto p-8">
 
-          {/* Bouton d'ajout — bascule l'affichage du formulaire */}
           <div className="mb-8 flex justify-end">
             <button
               onClick={() => setFormulaireOuvert(!formulaireOuvert)}
               className="rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
             >
-              Ajouter une Entreprise
+              + Ajouter une Entreprise
             </button>
           </div>
 
-          {/* Formulaire d'ajout (2 champs : nom + site web) */}
           {formulaireOuvert && (
             <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="mb-4 text-lg font-semibold text-gray-900">Nouvelle entreprise</h3>
@@ -205,7 +189,6 @@ export default function PageEntreprises() {
             </div>
           )}
 
-          {/* Grille des cartes entreprises */}
           {entreprises.length === 0 ? (
             <p className="text-center text-sm text-gray-500">
               Aucune entreprise pour le moment. Ajoutez-en une !
@@ -227,11 +210,12 @@ export default function PageEntreprises() {
                   </div>
                   {/* Actions */}
                   <div className="mt-5 flex items-center justify-between">
-                    <button className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+                    <a href="/contacts"><button className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
                       Contacter
                     </button>
+                    </a>
                     <button onClick={() => supprimerEntreprise(entreprise.id)}>
-                      <Image src="/delete.png" alt="Supprimer entreprise" width={24} height={24} />
+                      <Image src="/delete.png" alt="Supprimer entreprise" width={24} height={24} className="hover:cursor-pointer"/>
                     </button>
                   </div>
                 </div>

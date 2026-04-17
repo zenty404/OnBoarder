@@ -1,6 +1,4 @@
 // PAGE CONTACTS — Client Component dynamique (Supabase)
-// Vérifie la session, fetch contacts + entreprises, gère l'ajout et la suppression.
-// Le formulaire d'ajout utilise un <select> dynamique pour lier le company_id.
 
 "use client";
 
@@ -9,9 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
-// --- Types ---
 
-/** Contact issu de la table "contacts" + jointure companies(name) */
 type Contact = {
   id: string;
   full_name: string;
@@ -19,29 +15,26 @@ type Contact = {
   phone: string;
   company_id: string;
   created_at: string;
-  companies: { name: string } | null; // jointure Supabase
+  companies: { name: string } | null; 
 };
 
-/** Entreprise simplifiée (pour le menu déroulant du formulaire) */
 type Entreprise = {
   id: string;
   name: string;
 };
 
-// --- Navigation sidebar ---
-
 const elementsNavigation = [
-  { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
-  { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
-  { nom: "Contacts",        href: "/contacts",      actif: true,  icone: "/contacts.png" },
-  { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Tableau de bord", href: "/",              actif: false, icone: "/dashbord.png" },
+    { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
+    { nom: "Contacts",        href: "/contacts",      actif: true,  icone: "/contacts.png" },
+    { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
+    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/tickets.png" },
+
 ];
 
-// --- Composant principal ---
 
 export default function PageContacts() {
 
-  // États locaux
   const [emailUtilisateur, setEmailUtilisateur] = useState("");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
@@ -54,7 +47,6 @@ export default function PageContacts() {
 
   const router = useRouter();
 
-  // Au montage : vérifier la session + charger contacts et entreprises
   useEffect(() => {
     async function verifierSessionEtChargerDonnees() {
       // Vérification session — redirige vers /login si pas connecté
@@ -63,16 +55,13 @@ export default function PageContacts() {
 
       setEmailUtilisateur(session.user.email ?? "");
 
-      // 2 requêtes en parallèle (Promise.all = plus rapide)
       const [resultatContacts, resultatEntreprises] = await Promise.all([
-        // Contacts + jointure pour récupérer le nom de l'entreprise liée
-        // "*, companies(name)" = toutes les colonnes + nom de l'entreprise
+       
         supabase
           .from("contacts")
           .select("*, companies(name)")
           .order("created_at", { ascending: false }),
 
-        // Entreprises (id + name) pour alimenter le <select> du formulaire
         supabase
           .from("companies")
           .select("id, name")
@@ -87,15 +76,12 @@ export default function PageContacts() {
     verifierSessionEtChargerDonnees();
   }, [router]);
 
-  // Ajout d'un contact : INSERT avec user_id explicite (RLS)
   async function ajouterContact() {
     if (!nouveauNom.trim()) return;
 
-    // getUser() = identité vérifiée (plus sûr que getSession pour l'ID)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // INSERT avec jointure retour pour avoir le nom de l'entreprise
     const { data, error } = await supabase
       .from("contacts")
       .insert({
@@ -118,7 +104,6 @@ export default function PageContacts() {
     }
   }
 
-  // Suppression d'un contact : DELETE WHERE id = ... (RLS protège)
   async function supprimerContact(id: string) {
     const { error } = await supabase.from("contacts").delete().eq("id", id);
     if (!error) {
@@ -126,13 +111,11 @@ export default function PageContacts() {
     }
   }
 
-  // Déconnexion : détruit la session et redirige
   async function gererDeconnexion() {
     await supabase.auth.signOut();
     router.push("/login");
   }
 
-  // Écran de chargement
   if (chargement) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -141,12 +124,10 @@ export default function PageContacts() {
     );
   }
 
-  // --- Rendu JSX ---
 
   return (
     <div className="flex h-full min-h-screen">
 
-      {/* SIDEBAR */}
       <aside className="w-60 flex-shrink-0 border-r border-gray-200 bg-white">
         <div className="flex h-full flex-col">
           <div className="px-6 py-5">
@@ -177,10 +158,8 @@ export default function PageContacts() {
         </div>
       </aside>
 
-      {/* ZONE PRINCIPALE */}
       <div className="flex flex-1 flex-col">
 
-        {/* HEADER */}
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-4">
           <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
           <div className="flex items-center gap-4">
@@ -192,20 +171,17 @@ export default function PageContacts() {
           </div>
         </header>
 
-        {/* CONTENU */}
         <main className="flex-1 overflow-y-auto p-8">
 
-          {/* Bouton d'ajout */}
           <div className="mb-8 flex justify-end">
             <button
               onClick={() => setFormulaireOuvert(!formulaireOuvert)}
               className="rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
             >
-              Ajouter un Contact
+              + Ajouter un Contact
             </button>
           </div>
 
-          {/* Formulaire d'ajout (4 champs : nom, email, tél, entreprise) */}
           {formulaireOuvert && (
             <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6">
               <h3 className="mb-4 text-lg font-semibold text-gray-900">Nouveau contact</h3>
@@ -231,7 +207,6 @@ export default function PageContacts() {
                   onChange={(e) => setNouveauTelephone(e.target.value)}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none"
                 />
-                {/* Menu déroulant dynamique — lié aux entreprises de l'utilisateur */}
                 <select
                   value={entrepriseSelectionnee}
                   onChange={(e) => setEntrepriseSelectionnee(e.target.value)}
@@ -256,7 +231,6 @@ export default function PageContacts() {
             </div>
           )}
 
-          {/* Grille des cartes contacts */}
           {contacts.length === 0 ? (
             <p className="text-center text-sm text-gray-500">
               Aucun contact pour le moment. Ajoutez-en un !
@@ -264,13 +238,11 @@ export default function PageContacts() {
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {contacts.map((contact) => (
-                <div key={contact.id} className="rounded-2xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md">
-                  {/* Nom */}
+                <div key={contact.id} className="rounded-2xl border border-gray-200 bg-white p-6  transition-shadow hover:shadow-md">
                   <div className="flex items-center gap-4">
                     <Image src="/user.png" alt="Contact" width={28} height={28} />
                     <h3 className="text-xl font-bold text-gray-900">{contact.full_name}</h3>
                   </div>
-                  {/* Infos : entreprise (jointure), email, téléphone */}
                   <div className="mt-3 space-y-1">
                     <p className="text-sm text-gray-500">
                       Entreprise : <span className="text-gray-700">{contact.companies?.name ?? "—"}</span>
@@ -282,13 +254,12 @@ export default function PageContacts() {
                       Téléphone : <span className="text-gray-700">{contact.phone || "—"}</span>
                     </p>
                   </div>
-                  {/* Actions */}
                   <div className="mt-5 flex items-center justify-between">
                     <button onClick={() => router.push("/entreprises")} className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-                      Voir l&apos;entreprise
+                      Voir l'entreprise
                     </button>
                     <button onClick={() => supprimerContact(contact.id)}>
-                      <Image src="/delete.png" alt="Supprimer contact" width={24} height={24} />
+                      <Image src="/delete.png" alt="Supprimer contact" width={24} height={24} className="hover:cursor-pointer"/>
                     </button>
                   </div>
                 </div>
