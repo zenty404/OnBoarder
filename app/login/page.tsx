@@ -1,7 +1,4 @@
-// ============================================================
-// PAGE DE CONNEXION / INSCRIPTION (app/login/page.tsx)
-// ============================================================
-
+// Page de connexion et d'inscription.
 
 "use client";
 
@@ -10,36 +7,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 
-// ============================================================
-// COMPOSANT PRINCIPAL : PageConnexion
-// ============================================================
-
 export default function PageConnexion() {
 
-  // ----------------------------------------------------------
-  // ÉTATS LOCAUX (useState)
-  // ----------------------------------------------------------
-
-  const [email, setEmail] = useState("");
-
+  const [email, setEmail]           = useState("");
   const [motDePasse, setMotDePasse] = useState("");
-
-  const [erreur, setErreur] = useState("");
-
+  const [erreur, setErreur]         = useState("");
   const [chargement, setChargement] = useState(false);
-
-  // ----------------------------------------------------------
-  // HOOK DE NAVIGATION
-  // ----------------------------------------------------------
-  
   const router = useRouter();
-
-
-  // ----------------------------------------------------------
-  // FONCTION : Connexion (Se connecter)
-  // ----------------------------------------------------------
-  
-
   async function gererConnexion() {
     setErreur("");
     setChargement(true);
@@ -63,12 +37,6 @@ export default function PageConnexion() {
 
     router.push("/");
   }
-
-
-  // ----------------------------------------------------------
-  // FONCTION : Inscription (S'inscrire)
-  // ----------------------------------------------------------
-  
 
   async function gererInscription() {
     setErreur("");

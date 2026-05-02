@@ -1,15 +1,6 @@
-// ============================================================
-// PAGE ADMIN — Gestion des tickets de support
-//
-// Accès : réservé aux utilisateurs connectés (admin).
-// L'admin voit TOUS les tickets créés par les clients,
-// qu'ils soient anonymes ou connectés.
-//
-// Fonctionnalités :
-//  - Liste complète des tickets avec nom client, email, statut
-//  - Possibilité de changer le statut d'un ticket (inline)
-//  - Lien à copier pour partager la page publique client
-// ============================================================
+// Page admin — gestion des tickets clients.
+// Accessible uniquement si connecté. La RLS filtre les tickets par user_id.
+// Le bouton "Copier le lien" génère une URL avec ?uid= pour les clients.
 
 "use client";
 
@@ -18,23 +9,15 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
-// ============================================================
-// TYPE : structure d'un ticket (correspond aux colonnes BDD)
-// ============================================================
-
 type Ticket = {
   id:          string;
-  client_name: string;  // Nom fourni par le client anonyme
+  client_name: string;
   email:       string;
   title:       string;
   message:     string;
   status:      "Ouvert" | "En cours" | "Résolu" | "Fermé";
   created_at:  string;
 };
-
-// ============================================================
-// NAVIGATION LATÉRALE (sidebar partagée dans l'app)
-// ============================================================
 
 const elementsNavigation = [
   { nom: "Tableau de bord", href: "/",             actif: false, icone: "/dashbord.png" },
@@ -44,10 +27,7 @@ const elementsNavigation = [
   { nom: "Ticket",          href: "/tickets",      actif: true,  icone: "/tickets.png" },
 ];
 
-// ============================================================
-// UTILITAIRE : couleur du badge selon le statut du ticket
-// ============================================================
-
+// Couleur du badge selon le statut
 function couleurStatut(statut: string): string {
   switch (statut) {
     case "Ouvert":   return "bg-blue-100 text-blue-700";
@@ -58,112 +38,64 @@ function couleurStatut(statut: string): string {
   }
 }
 
-// ============================================================
-// COMPOSANT PRINCIPAL
-// ============================================================
-
 export default function PageTicketsAdmin() {
 
   const [emailUtilisateur, setEmailUtilisateur] = useState("");
   const [tickets, setTickets]                   = useState<Ticket[]>([]);
   const [chargement, setChargement]             = useState(true);
-
-  // Lien public à partager avec les clients
   const [lienCopie, setLienCopie]               = useState(false);
-
-  // Ticket actuellement ouvert en détail (null = aucun)
   const [ticketOuvert, setTicketOuvert]         = useState<Ticket | null>(null);
-
   const router = useRouter();
-
-  // ----------------------------------------------------------
-  // Chargement initial : vérification de la session admin
-  // puis récupération de TOUS les tickets
-  // ----------------------------------------------------------
 
   const chargerTickets = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push("/login"); return; }
-
     setEmailUtilisateur(session.user.email ?? "");
 
-    // SELECT * → la politique RLS "Admin voit tous les tickets"
-    // autorise les utilisateurs connectés à tout lire.
+    // La RLS filtre automatiquement sur auth.uid() = user_id
     const { data, error } = await supabase
       .from("tickets")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setTickets(data as Ticket[]);
-    }
-
+    if (!error && data) setTickets(data as Ticket[]);
     setChargement(false);
   }, [router]);
 
-  useEffect(() => {
-    chargerTickets();
-  }, [chargerTickets]);
+  useEffect(() => { chargerTickets(); }, [chargerTickets]);
 
-  // ----------------------------------------------------------
-  // ACTION : Changer le statut d'un ticket
-  // L'admin clique sur le badge de statut pour le faire défiler
-  // ----------------------------------------------------------
-
+  // Clic sur le badge = statut suivant dans le cycle
   const statutsSuivants: Record<string, Ticket["status"]> = {
-    "Ouvert":   "En cours",
-    "En cours": "Résolu",
-    "Résolu":   "Fermé",
-    "Fermé":    "Ouvert",
+    "Ouvert": "En cours", "En cours": "Résolu", "Résolu": "Fermé", "Fermé": "Ouvert",
   };
 
   async function changerStatut(ticket: Ticket) {
     const prochainStatut = statutsSuivants[ticket.status];
-
-    // Mise à jour optimiste : on change l'UI immédiatement
-    setTickets((prev) =>
-      prev.map((t) => t.id === ticket.id ? { ...t, status: prochainStatut } : t)
-    );
-
-    // Synchronisation avec Supabase
-    const { error } = await supabase
-      .from("tickets")
-      .update({ status: prochainStatut })
-      .eq("id", ticket.id);
-
+    // Mise à jour optimiste
+    setTickets((prev) => prev.map((t) => t.id === ticket.id ? { ...t, status: prochainStatut } : t));
+    const { error } = await supabase.from("tickets").update({ status: prochainStatut }).eq("id", ticket.id);
     if (error) {
-      // En cas d'erreur, on revient à l'état précédent
       console.error("Erreur mise à jour statut :", error.message);
-      setTickets((prev) =>
-        prev.map((t) => t.id === ticket.id ? { ...t, status: ticket.status } : t)
-      );
+      setTickets((prev) => prev.map((t) => t.id === ticket.id ? { ...t, status: ticket.status } : t));
     }
   }
 
-  // ----------------------------------------------------------
-  // ACTION : Copier le lien client dans le presse-papier
-  // ----------------------------------------------------------
-
+  // Copie le lien client avec le user_id de l'admin en paramètre ?uid=
   function copierLien() {
-    const lien = `${window.location.origin}/ticket-client`;
-    navigator.clipboard.writeText(lien).then(() => {
-      setLienCopie(true);
-      setTimeout(() => setLienCopie(false), 2500);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      const lien = `${window.location.origin}/ticket-client?uid=${session.user.id}`;
+      navigator.clipboard.writeText(lien).then(() => {
+        setLienCopie(true);
+        setTimeout(() => setLienCopie(false), 2500);
+      });
     });
   }
-
-  // ----------------------------------------------------------
-  // ACTION : Déconnexion admin
-  // ----------------------------------------------------------
 
   async function gererDeconnexion() {
     await supabase.auth.signOut();
     router.push("/login");
   }
-
-  // ----------------------------------------------------------
-  // ÉCRAN DE CHARGEMENT
-  // ----------------------------------------------------------
 
   if (chargement) {
     return (
@@ -173,16 +105,10 @@ export default function PageTicketsAdmin() {
     );
   }
 
-  // ----------------------------------------------------------
-  // RENDU PRINCIPAL
-  // ----------------------------------------------------------
-
   return (
     <div className="flex h-full min-h-screen">
 
-      {/* ======================================================
-          SIDEBAR — Navigation latérale admin
-      ====================================================== */}
+      {/* Sidebar */}
       <aside className="w-60 flex-shrink-0 border-r border-gray-200 bg-white">
         <div className="flex h-full flex-col">
           <div className="px-6 py-5">
@@ -194,14 +120,7 @@ export default function PageTicketsAdmin() {
                 <li key={element.nom}>
                   <a
                     href={element.href}
-                    className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
-                      transition-colors duration-150
-                      ${element.actif
-                        ? "bg-indigo-50 text-indigo-600"
-                        : "text-gray-700 hover:bg-gray-100"
-                      }
-                    `}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 ${element.actif ? "bg-indigo-50 text-indigo-600" : "text-gray-700 hover:bg-gray-100"}`}
                   >
                     <Image src={element.icone} alt={element.nom} width={20} height={20} />
                     {element.nom}
@@ -213,16 +132,10 @@ export default function PageTicketsAdmin() {
         </div>
       </aside>
 
-      {/* ======================================================
-          CONTENU PRINCIPAL
-      ====================================================== */}
       <div className="flex flex-1 flex-col">
-
-        {/* --- Header avec email admin + déconnexion --- */}
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
             Tickets clients
-            {/* Badge avec le nombre total de tickets */}
             <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
               {tickets.length}
             </span>
@@ -230,10 +143,7 @@ export default function PageTicketsAdmin() {
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-gray-700">{emailUtilisateur}</span>
             <Image src="/user.png" alt="Utilisateur" width={20} height={20} />
-            <button
-              onClick={gererDeconnexion}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
+            <button onClick={gererDeconnexion} className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors">
               Déconnexion
             </button>
           </div>
@@ -241,90 +151,54 @@ export default function PageTicketsAdmin() {
 
         <main className="flex-1 overflow-y-auto p-8">
 
-          {/* ================================================
-              ENCART : Lien à partager avec les clients
-          ================================================ */}
+          {/* Lien personnalisé à partager avec les clients */}
           <div className="mb-8 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-6 py-4">
             <div>
-              <p className="text-sm font-semibold text-indigo-800">
-                Lien à partager avec tes clients
-              </p>
+              <p className="text-sm font-semibold text-indigo-800">Ton lien personnel à partager avec tes clients</p>
               <p className="mt-0.5 text-xs text-indigo-600">
-                {typeof window !== "undefined"
-                  ? `${window.location.origin}/ticket-client`
-                  : "/ticket-client"}
+                {typeof window !== "undefined" ? `${window.location.origin}/ticket-client?uid=…` : "/ticket-client?uid=…"}
               </p>
             </div>
-            <button
-              onClick={copierLien}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-            >
+            <button onClick={copierLien} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
               {lienCopie ? "✓ Copié !" : "Copier le lien"}
             </button>
           </div>
 
-          {/* ================================================
-              LISTE DES TICKETS
-          ================================================ */}
           {tickets.length === 0 ? (
-            <p className="text-center text-sm text-gray-500">
-              Aucun ticket pour le moment. Partagez le lien avec vos clients !
-            </p>
+            <p className="text-center text-sm text-gray-500">Aucun ticket pour le moment. Partagez le lien avec vos clients !</p>
           ) : (
             <div className="flex flex-col gap-4">
               {tickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
-                >
-                  {/* --- Ligne titre + badge statut cliquable --- */}
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="text-base font-semibold text-gray-900">
-                      {ticket.title}
-                    </h3>
+                <div key={ticket.id} className="rounded-2xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md">
 
-                    {/* Badge statut : cliquer dessus pour faire défiler le statut */}
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-base font-semibold text-gray-900">{ticket.title}</h3>
+                    {/* Badge cliquable pour changer le statut */}
                     <button
                       onClick={() => changerStatut(ticket)}
                       title="Cliquer pour changer le statut"
-                      className={`
-                        shrink-0 cursor-pointer rounded-full px-3 py-1 text-xs font-medium
-                        transition-opacity hover:opacity-75
-                        ${couleurStatut(ticket.status)}
-                      `}
+                      className={`shrink-0 cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75 ${couleurStatut(ticket.status)}`}
                     >
                       {ticket.status}
                     </button>
                   </div>
 
-                  {/* --- Infos client --- */}
                   <div className="mt-2 flex items-center gap-3">
-                    {/* Nom du client */}
-                    <span className="text-sm font-medium text-gray-800">
-                      {ticket.client_name || "Client anonyme"}
-                    </span>
+                    <span className="text-sm font-medium text-gray-800">{ticket.client_name || "Client anonyme"}</span>
                     <span className="text-gray-300">·</span>
-                    {/* Email du client (cliquable pour ouvrir le client mail) */}
-                    <a
-                      href={`mailto:${ticket.email}`}
-                      className="text-sm text-indigo-600 hover:underline"
-                    >
-                      {ticket.email}
-                    </a>
+                    <a href={`mailto:${ticket.email}`} className="text-sm text-indigo-600 hover:underline">{ticket.email}</a>
                   </div>
 
-                  {/* --- Message : affiché en entier ou tronqué --- */}
+                  {/* Message tronqué — clic pour développer */}
                   <p
                     className="mt-3 cursor-pointer text-sm text-gray-600"
                     onClick={() => setTicketOuvert(ticket.id === ticketOuvert?.id ? null : ticket)}
                   >
                     {ticketOuvert?.id === ticket.id
-                      ? ticket.message                               // Affiché en entier
-                      : ticket.message.slice(0, 120) +              // Tronqué à 120 caractères
-                        (ticket.message.length > 120 ? "…" : "")}
+                      ? ticket.message
+                      : ticket.message.slice(0, 120) + (ticket.message.length > 120 ? "…" : "")}
                   </p>
 
-                  {/* Lien "Lire la suite" si le message est long */}
                   {ticket.message.length > 120 && (
                     <button
                       onClick={() => setTicketOuvert(ticket.id === ticketOuvert?.id ? null : ticket)}
@@ -334,19 +208,11 @@ export default function PageTicketsAdmin() {
                     </button>
                   )}
 
-                  {/* --- Date de création --- */}
                   <p className="mt-4 text-xs text-gray-400">
                     Ouvert le{" "}
-                    {new Date(ticket.created_at).toLocaleDateString("fr-FR", {
-                      day:   "numeric",
-                      month: "long",
-                      year:  "numeric",
-                    })}{" "}
+                    {new Date(ticket.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}{" "}
                     à{" "}
-                    {new Date(ticket.created_at).toLocaleTimeString("fr-FR", {
-                      hour:   "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {new Date(ticket.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
               ))}

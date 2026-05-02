@@ -1,6 +1,5 @@
-// ============================================================
-// PAGE PRINCIPALE : TABLEAU DE BORD (DASHBOARD)
-// ============================================================
+// Dashboard — vue synthétique avec stats (contacts, deals en cours, CA potentiel).
+// Redirige vers /login si pas de session active.
 
 "use client";
 
@@ -10,10 +9,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 
-// ============================================================
-// SECTION 1 : DONNÉES STATIQUES (ne changent pas)
-// ============================================================
-
+// Liens de navigation latérale
 const elementsNavigation = [
     { nom: "Tableau de bord", href: "/",              actif: true, icone: "/dashbord.png" },
     { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
@@ -24,11 +20,7 @@ const elementsNavigation = [
 ];
 
 
-// ============================================================
-// SECTION 2 : FONCTION UTILITAIRE
-// ============================================================
-
-
+// Formate un nombre en euros (ex: 12500 → "12 500 €")
 function formaterMontant(montant: number): string {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -39,29 +31,13 @@ function formaterMontant(montant: number): string {
 }
 
 
-// ============================================================
-// SECTION 3 : COMPOSANT PRINCIPAL DE LA PAGE
-// ============================================================
-
 export default function PageTableauDeBord() {
 
-  // ----------------------------------------------------------
-  // ÉTATS LOCAUX (useState)
-  // ----------------------------------------------------------
-
   const [emailUtilisateur, setEmailUtilisateur] = useState("");
-
-  const [totalContacts, setTotalContacts] = useState(0);
-
+  const [totalContacts, setTotalContacts]         = useState(0);
   const [opportunitesEnCours, setOpportunitesEnCours] = useState(0);
-
-  const [chiffreAffaires, setChiffreAffaires] = useState(0);
-
-  const [chargement, setChargement] = useState(true);
-
-  // ----------------------------------------------------------
-  // HOOK DE NAVIGATION
-  // ----------------------------------------------------------
+  const [chiffreAffaires, setChiffreAffaires]     = useState(0);
+  const [chargement, setChargement]               = useState(true);
   const router = useRouter();
 
 
@@ -69,91 +45,35 @@ export default function PageTableauDeBord() {
   // useEffect : VÉRIFICATION DE SESSION + CHARGEMENT DES DONNÉES
   // ----------------------------------------------------------
   
-
   useEffect(() => {
     async function verifierSessionEtChargerDonnees() {
-
-      // ======================================================
-      // ÉTAPE 1 : Vérifier la session utilisateur
-      // ======================================================
-      
       const { data: { session } } = await supabase.auth.getSession();
-
-      
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
+      if (!session) { router.push("/login"); return; }
       setEmailUtilisateur(session.user.email ?? "");
 
-      // ======================================================
-      // ÉTAPE 2 : Lancer les 3 requêtes Supabase en parallèle
-      // ======================================================
-     
+      // 3 requêtes en parallèle pour éviter les waterfalls
       const [resultatContacts, resultatOpportunites, resultatDeals] = await Promise.all([
-
-        // --------------------------------------------------
-        // REQUÊTE 1 : Compter le nombre total de contacts
-        // --------------------------------------------------
-       
-        supabase
-          .from("contacts")
-          .select("*", { count: "exact", head: true }),
-
-        // --------------------------------------------------
-        // REQUÊTE 2 : Compter les opportunités "en cours"
-        // --------------------------------------------------
-        
-        supabase
-          .from("deals")
-          .select("*", { count: "exact", head: true })
-          .in("status", ["À contacter", "En négociation"]),
-
-        // --------------------------------------------------
-        // REQUÊTE 3 : Récupérer les montants des deals non perdus
-        // --------------------------------------------------
-        
-        supabase
-          .from("deals")
-          .select("amount")
-          .neq("status", "Perdu"),
+        supabase.from("contacts").select("*", { count: "exact", head: true }),
+        supabase.from("deals").select("*", { count: "exact", head: true }).in("status", ["À contacter", "En négociation"]),
+        supabase.from("deals").select("amount").neq("status", "Perdu"),
       ]);
 
-      // ======================================================
-      // ÉTAPE 3 : Extraire et stocker les résultats
-      // ======================================================
-
       setTotalContacts(resultatContacts.count ?? 0);
-
       setOpportunitesEnCours(resultatOpportunites.count ?? 0);
 
-      
       const deals = resultatDeals.data ?? [];
       const somme = deals.reduce((somme, deal) => somme + (deal.amount ?? 0), 0);
       setChiffreAffaires(somme);
-
       setChargement(false);
     }
 
     verifierSessionEtChargerDonnees();
   }, [router]);
 
-
-  // ----------------------------------------------------------
-  // FONCTION : Déconnexion
-  // ----------------------------------------------------------
-  
-
   async function gererDeconnexion() {
     await supabase.auth.signOut();
     router.push("/login");
   }
-
-
-  // ----------------------------------------------------------
-  // ÉTAT DE CHARGEMENT
-  // ----------------------------------------------------------
 
   if (chargement) {
     return (
@@ -163,26 +83,15 @@ export default function PageTableauDeBord() {
     );
   }
 
-
-  // ----------------------------------------------------------
-  // EXTRACTION DU PRÉNOM depuis l'email
-  // ----------------------------------------------------------
+  // Prénom extrait de l'email (partie avant le @)
   const prenom = emailUtilisateur.split("@")[0];
-
-
-  // ----------------------------------------------------------
-  // RENDU JSX : Layout identique à la maquette validée
-  // ----------------------------------------------------------
 
   return (
     <div className="flex h-full min-h-screen">
 
-      {/* ======================================================== */}
-      {/* SIDEBAR : Menu de navigation latéral gauche               */}
-      {/* ======================================================== */}
+      {/* Sidebar */}
       <aside className="w-60 flex-shrink-0 border-r border-gray-200 bg-white">
         <div className="flex h-full flex-col">
-
           <div className="px-6 py-5">
             <h1 className="text-xl font-bold text-indigo-600">OnBoarder</h1>
           </div>
@@ -197,10 +106,7 @@ export default function PageTableauDeBord() {
                     className={`
                       flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
                       transition-colors duration-150
-                      ${element.actif
-                        ? "bg-indigo-50 text-indigo-600" /* Style actif : fond bleu clair + texte bleu */
-                        : "text-gray-700 hover:bg-gray-100" /* Style inactif : texte gris + survol gris */
-                      }
+                      ${element.actif ? "bg-indigo-50 text-indigo-600" : "text-gray-700 hover:bg-gray-100"}
                     `}
                   >
                     <Image src={element.icone} alt={element.nom} width={20} height={20} />
@@ -213,11 +119,8 @@ export default function PageTableauDeBord() {
         </div>
       </aside>
 
-      {/* ======================================================== */}
-      {/* ZONE PRINCIPALE : Header + Contenu du dashboard           */}
-      {/* ======================================================== */}
+      {/* Contenu principal */}
       <div className="flex flex-1 flex-col">
-
       
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-8 py-4">
           <h2 className="text-lg font-semibold text-gray-900">Tableau de bord</h2>

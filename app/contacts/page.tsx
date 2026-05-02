@@ -254,10 +254,7 @@ export default function PageContacts() {
                       Téléphone : <span className="text-gray-700">{contact.phone || "—"}</span>
                     </p>
                   </div>
-                  <div className="mt-5 flex items-center justify-between">
-                    <button onClick={() => router.push("/entreprises")} className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-                      Voir l'entreprise
-                    </button>
+                  <div className="mt-5 flex justify-end">
                     <button onClick={() => supprimerContact(contact.id)}>
                       <Image src="/delete.png" alt="Supprimer contact" width={24} height={24} className="hover:cursor-pointer"/>
                     </button>
