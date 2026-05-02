@@ -2,13 +2,17 @@
 // PAGE ADMIN — Gestion des tickets de support
 //
 // Accès : réservé aux utilisateurs connectés (admin).
-// L'admin voit TOUS les tickets créés par les clients,
-// qu'ils soient anonymes ou connectés.
+// L'admin voit UNIQUEMENT ses propres tickets (RLS filtre
+// sur user_id = auth.uid()).
+//
+// Le lien partagé avec les clients contient le user_id de
+// l'admin : /ticket-client?uid=<user_id>
+// Quand un client soumet, le ticket est attribué à cet admin.
 //
 // Fonctionnalités :
-//  - Liste complète des tickets avec nom client, email, statut
+//  - Liste des tickets filtrée par admin connecté
 //  - Possibilité de changer le statut d'un ticket (inline)
-//  - Lien à copier pour partager la page publique client
+//  - Lien personnalisé à copier pour partager aux clients
 // ============================================================
 
 "use client";
@@ -142,13 +146,22 @@ export default function PageTicketsAdmin() {
 
   // ----------------------------------------------------------
   // ACTION : Copier le lien client dans le presse-papier
+  //
+  // Le lien contient le user_id de l'admin connecté (?uid=...).
+  // Ainsi, chaque ticket créé via ce lien sera attribué à cet admin
+  // et sera visible UNIQUEMENT dans son tableau de bord.
   // ----------------------------------------------------------
 
   function copierLien() {
-    const lien = `${window.location.origin}/ticket-client`;
-    navigator.clipboard.writeText(lien).then(() => {
-      setLienCopie(true);
-      setTimeout(() => setLienCopie(false), 2500);
+    // On récupère la session courante pour obtenir le user_id
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      // Construction du lien avec le uid de l'admin en paramètre
+      const lien = `${window.location.origin}/ticket-client?uid=${session.user.id}`;
+      navigator.clipboard.writeText(lien).then(() => {
+        setLienCopie(true);
+        setTimeout(() => setLienCopie(false), 2500);
+      });
     });
   }
 
@@ -247,12 +260,14 @@ export default function PageTicketsAdmin() {
           <div className="mb-8 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-6 py-4">
             <div>
               <p className="text-sm font-semibold text-indigo-800">
-                Lien à partager avec tes clients
+                Ton lien personnel à partager avec tes clients
               </p>
+              {/* Le ?uid= dans l'URL est ton identifiant unique en tant qu'admin. */}
+              {/* Chaque ticket créé via ce lien t'est automatiquement attribué. */}
               <p className="mt-0.5 text-xs text-indigo-600">
                 {typeof window !== "undefined"
-                  ? `${window.location.origin}/ticket-client`
-                  : "/ticket-client"}
+                  ? `${window.location.origin}/ticket-client?uid=…`
+                  : "/ticket-client?uid=…"}
               </p>
             </div>
             <button

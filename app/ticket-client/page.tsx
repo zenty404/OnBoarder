@@ -2,26 +2,34 @@
 // PAGE PUBLIQUE — Soumission de ticket client
 //
 // Cette page est ACCESSIBLE SANS COMPTE.
-// Le client reçoit un lien (ex: /ticket-client) et peut
-// directement décrire son problème.
+// Le client reçoit un lien unique de la forme :
+//   /ticket-client?uid=<user_id_de_l_admin>
 //
-// Le ticket est inséré dans Supabase via la politique RLS
-// "Clients peuvent créer un ticket" (INSERT ouvert au rôle anon).
+// Le paramètre "uid" dans l'URL identifie à quel admin
+// appartient ce ticket. Ainsi chaque admin ne voit QUE
+// les tickets créés via son propre lien.
 //
-// Il n'y a PAS de sidebar, PAS de header admin ici.
-// C'est une page standalone épurée, focalisée sur l'action.
+// Si le paramètre uid est absent ou invalide, on affiche
+// un message d'erreur → le lien est incomplet.
 // ============================================================
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 // ============================================================
-// COMPOSANT PRINCIPAL
+// COMPOSANT INTERNE — isolé dans un Suspense pour useSearchParams
+// Next.js oblige à wrapper useSearchParams dans Suspense.
 // ============================================================
 
-export default function PageTicketClient() {
+function FormulaireTicket() {
+
+  // Récupération du paramètre ?uid= dans l'URL
+  // Ce uid est le user_id de l'admin qui a partagé le lien.
+  const searchParams = useSearchParams();
+  const adminUid     = searchParams.get("uid");
 
   // --- États du formulaire ---
   const [clientName, setClientName] = useState("");
@@ -30,8 +38,19 @@ export default function PageTicketClient() {
   const [message, setMessage]       = useState("");
 
   // --- États de l'UI ---
-  const [envoi, setEnvoi]           = useState<"idle" | "chargement" | "succes" | "erreur">("idle");
-  const [erreurMsg, setErreurMsg]   = useState("");
+  const [envoi, setEnvoi]         = useState<"idle" | "chargement" | "succes" | "erreur">("idle");
+  const [erreurMsg, setErreurMsg] = useState("");
+
+  // ----------------------------------------------------------
+  // GARDE : Si le lien ne contient pas de uid, on bloque tout.
+  // Le client a reçu un lien incomplet ou malformé.
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    if (!adminUid) {
+      setErreurMsg("Lien invalide. Demande un nouveau lien à ton interlocuteur.");
+    }
+  }, [adminUid]);
 
   // ----------------------------------------------------------
   // ACTION : Envoyer le ticket vers Supabase
@@ -44,19 +63,28 @@ export default function PageTicketClient() {
       return;
     }
 
+    // Sécurité : on ne peut pas envoyer sans uid admin dans l'URL
+    if (!adminUid) {
+      setErreurMsg("Lien invalide. Impossible d'envoyer le ticket.");
+      return;
+    }
+
     setEnvoi("chargement");
     setErreurMsg("");
 
-    // Insertion dans Supabase sans user_id (client anonyme)
-    // La politique RLS "Clients peuvent créer un ticket" autorise cela.
+    // Insertion dans Supabase.
+    // On passe le user_id de l'admin (récupéré depuis le paramètre ?uid=)
+    // pour que ce ticket lui soit attribué et qu'il puisse le voir.
+    // La politique RLS "Clients peuvent créer un ticket" autorise l'insert
+    // pour les utilisateurs non connectés (rôle anon).
     const { error } = await supabase
       .from("tickets")
       .insert({
+        user_id:     adminUid,          // ← Attribué à l'admin qui a partagé le lien
         client_name: clientName.trim(),
         email:       email.trim(),
         title:       titre.trim(),
         message:     message.trim(),
-        // user_id non fourni → NULL (le client n'a pas de compte)
         // status → "Ouvert" par défaut (valeur DEFAULT dans la BDD)
       });
 
@@ -67,7 +95,7 @@ export default function PageTicketClient() {
       return;
     }
 
-    // ✅ Succès : on affiche le message de confirmation
+    // ✅ Succès : affichage de la confirmation
     setEnvoi("succes");
   }
 
@@ -93,7 +121,7 @@ export default function PageTicketClient() {
             <span className="font-medium text-gray-700">{email}</span> dès que possible.
           </p>
 
-          {/* Option pour envoyer un autre ticket */}
+          {/* Option pour envoyer un autre ticket (conserve le uid dans l'URL) */}
           <button
             onClick={() => {
               setClientName("");
@@ -113,6 +141,28 @@ export default function PageTicketClient() {
   }
 
   // ----------------------------------------------------------
+  // RENDU — Lien invalide (pas de uid dans l'URL)
+  // ----------------------------------------------------------
+
+  if (!adminUid) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">Lien invalide</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            Ce lien est incomplet ou a expiré. Contacte ton interlocuteur pour obtenir un nouveau lien.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------
   // RENDU PRINCIPAL — Formulaire de création de ticket
   // ----------------------------------------------------------
 
@@ -124,7 +174,6 @@ export default function PageTicketClient() {
             EN-TÊTE de la page
         ------------------------------------------------ */}
         <div className="mb-8 text-center">
-          {/* Logo / Nom de la marque */}
           <span className="text-2xl font-bold text-indigo-600">OnBoarder</span>
 
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900">
@@ -232,5 +281,22 @@ export default function PageTicketClient() {
 
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// EXPORT — Wrappé dans Suspense (requis par Next.js pour
+// les composants utilisant useSearchParams côté client)
+// ============================================================
+
+export default function PageTicketClient() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-sm text-gray-500">Chargement…</p>
+      </div>
+    }>
+      <FormulaireTicket />
+    </Suspense>
   );
 }
