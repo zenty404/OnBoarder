@@ -10,6 +10,7 @@
 -- ============================================================
 
 
+
 -- ------------------------------------------------------------
 -- ÉTAPE 1 : Suppression préventive (pour ré-exécution propre)
 -- ⚠️  Supprime la table et toutes les données existantes.

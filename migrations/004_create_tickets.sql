@@ -18,6 +18,7 @@
 -- ============================================================
 
 
+
 -- ------------------------------------------------------------
 -- ÉTAPE 1 : Suppression préventive
 -- ⚠️  Supprime la table et toutes les données existantes.
