@@ -28,8 +28,6 @@ const elementsNavigation = [
     { nom: "Entreprises",     href: "/entreprises",   actif: false, icone: "/entreprises.png" },
     { nom: "Contacts",        href: "/contacts",      actif: true,  icone: "/contacts.png" },
     { nom: "Opportunités",    href: "/opportunites",  actif: false, icone: "/opportunites.png" },
-    { nom: "Ticket",          href: "/tickets",        actif: false, icone: "/tickets.png" },
-
 ];
 
 
