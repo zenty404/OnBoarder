@@ -4,7 +4,7 @@
 
 ### Mini-CRM pour indépendants & TPE
 
-**Cours MSIE — Mise en situation développeur**
+**Cours MSD — Mise en situation développeur**
 Réalisé par **Arthur LASNIER et Elio CHARNAY** · Encadré par **Graven**
 
 ---
@@ -74,7 +74,6 @@ OnBoarder/
 │   ├── 001_create_companies.sql
 │   ├── 002_create_contacts.sql
 │   ├── 003_create_deals.sql
-│   └── 004_create_tickets.sql
 │
 └── public/                   # Icônes de navigation
 ```
@@ -89,14 +88,11 @@ Toutes les tables sont **multi-tenant** : chaque utilisateur ne voit que ses pro
 auth.users          ← géré par Supabase Auth
     │
     ├── companies   (id, user_id, name, website)
-    │       │
-    │       └── contacts  (id, user_id, company_id, full_name, email, phone)
-    │               │
-    │               └── deals  (id, user_id, contact_id, title, amount, status)
-    │
-    └── tickets  (id, user_id?, client_name, email, title, message, status)
-                  ↑ user_id nullable : les clients anonymes peuvent créer un ticket
-```
+            │
+            └── contacts  (id, user_id, company_id, full_name, email, phone)
+                    │
+                    └── deals  (id, user_id, contact_id, title, amount, status)
+
 
 ### Politiques RLS par table
 
@@ -105,8 +101,6 @@ auth.users          ← géré par Supabase Auth
 | `companies` | Propriétaire uniquement | Propriétaire uniquement | Propriétaire uniquement |
 | `contacts` | Propriétaire uniquement | Propriétaire uniquement | Propriétaire uniquement |
 | `deals` | Propriétaire uniquement | Propriétaire uniquement | Propriétaire uniquement |
-| `tickets` | **Tout le monde** (anon inclus) | Admin connecté (tous les tickets) | Admin connecté |
-
 ---
 
 ## ⚙️ Installation locale
@@ -143,7 +137,6 @@ Dans l'éditeur SQL de Supabase, exécute les fichiers **dans l'ordre** :
 migrations/001_create_companies.sql
 migrations/002_create_contacts.sql
 migrations/003_create_deals.sql
-migrations/004_create_tickets.sql
 ```
 
 ### 4. Lancer le serveur de développement
@@ -153,27 +146,6 @@ npm run dev
 ```
 
 L'application est disponible sur [http://localhost:3000](http://localhost:3000).
-
----
-
-## 🎫 Système de tickets — fonctionnement
-
-```
-Client (sans compte)
-    │
-    │  Reçoit un lien → /ticket-client
-    │  Remplit : Nom · Email · Sujet · Message
-    │  Envoie le ticket ──────────────────────────────────────────┐
-                                                                  ▼
-                                                    Supabase (table tickets)
-                                                                  │
-Admin (connecté)                                                  │
-    │                                                             │
-    │  Se connecte → /tickets ◄────────────────────────────────────┘
-    │  Voit tous les tickets reçus
-    │  Clique sur le badge pour changer le statut :
-    └──  Ouvert → En cours → Résolu → Fermé
-```
 
 ---
 
@@ -199,7 +171,7 @@ Les variables d'environnement (`NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABA
 
 <div align="center">
 
-Projet réalisé dans le cadre du cours **MSIE — Mise en situation dev**
+Projet réalisé dans le cadre du cours **MSD — Mise en situation dev**
 avec **Graven** · Mai 2026
 
 </div>
